@@ -191,14 +191,14 @@ export default function Equipment() {
       </div>
 
       {permissions.canModifyEquipment && (
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {isEditing ? "Modifier l'équipement" : "Nouvel équipement"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {isEditing ? "Modifier l'équipement" : "Nouvel équipement"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="nom_equipement">Nom de l'équipement *</Label>
               <Select
@@ -286,9 +286,9 @@ export default function Equipment() {
                 </Button>
               )}
             </div>
-            </form>
-          </CardContent>
-        </Card>
+          </form>
+        </CardContent>
+      </Card>
       )}
       {!permissions.canModifyEquipment && (
         <Card>
@@ -351,28 +351,28 @@ export default function Equipment() {
                             </Button>
                             {permissions.canModifyEquipment && (
                               <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    setIsEditing(item.id);
-                                    setFormData({
-                                      num_serie: item.num_serie || "",
-                                      nom_equipement: item.nom_equipement,
-                                      partition: item.partition,
-                                      etat: "actuel",
-                                    });
-                                  }}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDelete(item.id)}
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setIsEditing(item.id);
+                                setFormData({
+                                  num_serie: item.num_serie || "",
+                                  nom_equipement: item.nom_equipement,
+                                  partition: item.partition,
+                                  etat: "actuel",
+                                });
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(item.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
                               </>
                             )}
                           </div>

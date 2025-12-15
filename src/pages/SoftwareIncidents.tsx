@@ -29,11 +29,11 @@ export default function SoftwareIncidents() {
       </div>
 
       {permissions.canModifySoftwareIncidents && (
-        <IncidentForm
-          onSubmit={handleSubmit}
-          type="software"
-          title="Nouveau incident software"
-        />
+      <IncidentForm
+        onSubmit={handleSubmit}
+        type="software"
+        title="Nouveau incident software"
+      />
       )}
       {!permissions.canModifySoftwareIncidents && (
         <div className="text-center py-8 text-muted-foreground">

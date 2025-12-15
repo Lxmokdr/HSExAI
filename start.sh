@@ -6,6 +6,19 @@
 echo "🚀 Starting ENNA ATC - Incident Management System"
 echo "=================================================="
 
+# If we're on Render, redirect to start_render.sh
+# Render always sets PORT environment variable
+# Also check for RENDER=true or if we're in a containerized environment
+if [ -n "${PORT:-}" ] && [ -f "backend/start_render.sh" ]; then
+    # Additional check: if RENDER is set, or if we're clearly in production
+    if [ -n "${RENDER:-}" ] || [ "${NODE_ENV:-}" = "production" ] || [ ! -z "${DB_HOST:-}" ]; then
+        echo "🔄 Render environment detected - using Render-specific startup script..."
+        echo "   RENDER=${RENDER:-not set}, PORT=${PORT}, NODE_ENV=${NODE_ENV:-not set}"
+        cd backend
+        exec bash start_render.sh
+    fi
+fi
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -24,9 +37,9 @@ check_port() {
         fi
     elif command -v netstat &> /dev/null; then
         if netstat -tuln 2>/dev/null | grep -q ":$1 "; then
-            echo -e "${YELLOW}⚠️  Port $1 is already in use${NC}"
-            return 1
-        else
+        echo -e "${YELLOW}⚠️  Port $1 is already in use${NC}"
+        return 1
+    else
             return 0
         fi
     else
@@ -115,20 +128,20 @@ if [ -f "backend/.env" ]; then
 fi
 
 # Change to backend directory
-cd backend
-
-# Determine Python command
-if [ -d "venv" ]; then
-    PYTHON_CMD="$(pwd)/venv/bin/python"
-else
-    PYTHON_CMD=python3
-fi
-
-# Check if Django is set up
-if [ ! -f "manage.py" ]; then
-    echo -e "${YELLOW}🔄 Django backend not set up, running setup...${NC}"
-    bash setup_django.sh
-fi
+    cd backend
+    
+    # Determine Python command
+    if [ -d "venv" ]; then
+        PYTHON_CMD="$(pwd)/venv/bin/python"
+    else
+        PYTHON_CMD=python3
+    fi
+    
+    # Check if Django is set up
+    if [ ! -f "manage.py" ]; then
+        echo -e "${YELLOW}🔄 Django backend not set up, running setup...${NC}"
+        bash setup_django.sh
+    fi
 
 # Check database authentication method
 DB_PASSWORD=${DB_PASSWORD:-}
@@ -150,32 +163,32 @@ if [ -z "$DB_PASSWORD" ] || [ "$DB_PASSWORD" = "enna_password" ] || [ -z "${DB_P
         # Local development - try peer authentication with sudo
         echo -e "${YELLOW}⚠️  Database password not configured. Attempting peer authentication...${NC}"
         echo -e "${YELLOW}   This requires sudo access.${NC}"
-        
-        # Try to run with sudo (test if passwordless sudo works for postgres user)
-        if sudo -n -u postgres true 2>/dev/null; then
-            # Passwordless sudo available
-            echo -e "${GREEN}✅ Using passwordless sudo for peer authentication${NC}"
+    
+    # Try to run with sudo (test if passwordless sudo works for postgres user)
+    if sudo -n -u postgres true 2>/dev/null; then
+        # Passwordless sudo available
+        echo -e "${GREEN}✅ Using passwordless sudo for peer authentication${NC}"
             SERVER_PORT=${PORT:-8000}
             sudo -E -u postgres env PATH="$PATH" "$PYTHON_CMD" manage.py runserver 0.0.0.0:$SERVER_PORT &
-            BACKEND_PID=$!
-        else
-            # Try running anyway - might work with passwordless sudo configured
-            echo -e "${YELLOW}⚠️  Attempting to use sudo (passwordless sudo may be configured)...${NC}"
+        BACKEND_PID=$!
+    else
+        # Try running anyway - might work with passwordless sudo configured
+        echo -e "${YELLOW}⚠️  Attempting to use sudo (passwordless sudo may be configured)...${NC}"
             SERVER_PORT=${PORT:-8000}
             if sudo -E -u postgres env PATH="$PATH" "$PYTHON_CMD" manage.py runserver 0.0.0.0:$SERVER_PORT & 2>/dev/null; then
-                BACKEND_PID=$!
-                sleep 2
-                if ! kill -0 $BACKEND_PID 2>/dev/null; then
+        BACKEND_PID=$!
+        sleep 2
+        if ! kill -0 $BACKEND_PID 2>/dev/null; then
                     echo -e "${RED}❌ Sudo failed. Please configure passwordless sudo or set DB_PASSWORD${NC}"
                     cd ..
                     exit 1
                 fi
             else
                 echo -e "${RED}❌ Sudo not available. Please set DB_PASSWORD environment variable${NC}"
-                cd ..
-                exit 1
-            fi
+            cd ..
+            exit 1
         fi
+    fi
     else
         # No sudo available - use environment variables
         echo -e "${YELLOW}⚠️  Sudo not available. Using environment variables${NC}"
@@ -208,7 +221,7 @@ SERVER_PORT=${PORT:-8000}
 if command -v curl &> /dev/null; then
     if curl -s http://localhost:$SERVER_PORT/api/health/ > /dev/null 2>&1; then
         echo -e "${GREEN}✅ Backend running on http://localhost:$SERVER_PORT${NC}"
-    else
+else
         echo -e "${YELLOW}⚠️  Backend health check failed, but process is running${NC}"
         echo -e "${YELLOW}   (This may be normal during startup)${NC}"
     fi
@@ -218,25 +231,25 @@ else
         echo -e "${GREEN}✅ Backend process running on port $SERVER_PORT (PID: $BACKEND_PID)${NC}"
     else
         echo -e "${RED}❌ Backend process failed to start${NC}"
-        exit 1
+    exit 1
     fi
 fi
 
 # Start Frontend (only if not in production mode)
 if [ "${NODE_ENV}" != "production" ] && [ -z "${SKIP_FRONTEND:-}" ]; then
-    echo -e "${BLUE}⚛️  Starting Frontend Development Server...${NC}"
-    npm run dev &
-    FRONTEND_PID=$!
-    
-    # Wait for frontend to start
-    echo -e "${YELLOW}⏳ Waiting for frontend to start...${NC}"
-    sleep 5
-    
+echo -e "${BLUE}⚛️  Starting Frontend Development Server...${NC}"
+npm run dev &
+FRONTEND_PID=$!
+
+# Wait for frontend to start
+echo -e "${YELLOW}⏳ Waiting for frontend to start...${NC}"
+sleep 5
+
     # Check if frontend is running (with fallback if curl not available)
     if command -v curl &> /dev/null; then
         if curl -s http://localhost:8080 > /dev/null 2>&1; then
-            echo -e "${GREEN}✅ Frontend running on http://localhost:8080${NC}"
-        else
+    echo -e "${GREEN}✅ Frontend running on http://localhost:8080${NC}"
+else
             echo -e "${YELLOW}⚠️  Frontend health check failed, but process is running${NC}"
         fi
     else
@@ -256,7 +269,7 @@ echo ""
 echo -e "${GREEN}🎉 ENNA ATC is now running!${NC}"
 echo "=================================================="
 if [ -z "${SKIP_FRONTEND:-}" ] && [ "${NODE_ENV}" != "production" ]; then
-    echo -e "${BLUE}📱 Frontend:${NC}     http://localhost:8080"
+echo -e "${BLUE}📱 Frontend:${NC}     http://localhost:8080"
 fi
 echo -e "${BLUE}🔧 Backend API:${NC}   http://localhost:${SERVER_PORT:-8000} (Django)"
 echo ""

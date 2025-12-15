@@ -68,16 +68,16 @@ export default function History() {
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "hardware" | "software")} className="w-full">
         <TabsList className={`grid w-full ${permissions.canAccessHardwareIncidents && permissions.canAccessSoftwareIncidents ? 'grid-cols-2' : 'grid-cols-1'}`}>
           {permissions.canAccessHardwareIncidents && (
-            <TabsTrigger value="hardware" className="flex items-center gap-2">
-              <Cpu className="h-4 w-4" />
-              Incidents Matériels ({hardwareIncidents.length})
-            </TabsTrigger>
+          <TabsTrigger value="hardware" className="flex items-center gap-2">
+            <Cpu className="h-4 w-4" />
+            Incidents Matériels ({hardwareIncidents.length})
+          </TabsTrigger>
           )}
           {permissions.canAccessSoftwareIncidents && (
-            <TabsTrigger value="software" className="flex items-center gap-2">
-              <HardDrive className="h-4 w-4" />
-              Incidents Logiciels ({softwareIncidents.length})
-            </TabsTrigger>
+          <TabsTrigger value="software" className="flex items-center gap-2">
+            <HardDrive className="h-4 w-4" />
+            Incidents Logiciels ({softwareIncidents.length})
+          </TabsTrigger>
           )}
         </TabsList>
 

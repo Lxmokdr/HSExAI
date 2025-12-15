@@ -37,13 +37,13 @@ export function useIncidents() {
 
       if (permissions.canAccessHardwareIncidents) {
         loadPromises.push(
-          apiClient.getIncidents({ type: 'hardware' }).catch(err => {
+        apiClient.getIncidents({ type: 'hardware' }).catch(err => {
             // If 403, user doesn't have access - return empty
             if (err.status === 403) {
               return { results: [], count: 0 };
             }
-            console.error("Error loading hardware incidents:", err);
-            return { results: [], count: 0 };
+          console.error("Error loading hardware incidents:", err);
+          return { results: [], count: 0 };
           })
         );
       } else {
@@ -53,14 +53,14 @@ export function useIncidents() {
 
       if (permissions.canAccessSoftwareIncidents) {
         loadPromises.push(
-          apiClient.getIncidents({ type: 'software' }).catch(err => {
+        apiClient.getIncidents({ type: 'software' }).catch(err => {
             // If 403, user doesn't have access - return empty
             if (err.status === 403) {
               return { results: [], count: 0 };
             }
-            console.error("Error loading software incidents:", err);
-            return { results: [], count: 0 };
-          })
+          console.error("Error loading software incidents:", err);
+          return { results: [], count: 0 };
+        })
         );
       } else {
         // User doesn't have access, set empty array

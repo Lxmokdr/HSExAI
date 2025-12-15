@@ -51,12 +51,12 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
             } else {
               // Other error, clear auth data
               console.error("Token validation failed, clearing auth:", err.message);
-              localStorage.removeItem("enna_user");
-              localStorage.removeItem("enna_token");
+            localStorage.removeItem("enna_user");
+            localStorage.removeItem("enna_token");
               localStorage.removeItem("enna_refresh_token");
-              apiClient.setToken(null);
+            apiClient.setToken(null);
               apiClient.setRefreshToken(null);
-              setUser(null);
+            setUser(null);
             }
           }
         }
@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
         // Rate limiting
         setError("Trop de tentatives. Veuillez patienter quelques minutes avant de réessayer.");
       } else {
-        setError(err.message || "Erreur de connexion");
+      setError(err.message || "Erreur de connexion");
       }
       throw err;
     } finally {

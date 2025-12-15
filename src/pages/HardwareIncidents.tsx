@@ -29,11 +29,11 @@ export default function HardwareIncidents() {
       </div>
 
       {permissions.canModifyHardwareIncidents && (
-        <IncidentForm
-          onSubmit={handleSubmit}
-          type="hardware"
-          title="Nouveau incident hardware"
-        />
+      <IncidentForm
+        onSubmit={handleSubmit}
+        type="hardware"
+        title="Nouveau incident hardware"
+      />
       )}
       {!permissions.canModifyHardwareIncidents && (
         <div className="text-center py-8 text-muted-foreground">

@@ -195,12 +195,12 @@ class ApiClient {
     }
 
     try {
-      const response = await fetch(url, {
-        ...options,
-        headers,
-      });
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
 
-      if (!response.ok) {
+    if (!response.ok) {
         // Handle 401 Unauthorized - try to refresh token
         if (response.status === 401 && this.refreshTokenValue && endpoint !== '/auth/refresh/') {
           try {
@@ -222,7 +222,7 @@ class ApiClient {
           }
         }
         
-        const errorData = await response.json().catch(() => ({}));
+      const errorData = await response.json().catch(() => ({}));
         
         // Log error details for debugging (always log 400 errors to help diagnose issues)
         if (import.meta.env.DEV || response.status === 400) {
@@ -238,26 +238,26 @@ class ApiClient {
           }
         }
         
-        // Handle different error formats
+      // Handle different error formats
         let errorMessage = errorData.error || errorData.message || errorData.detail;
         
         // Handle non_field_errors (common in DRF)
-        if (errorData.non_field_errors && Array.isArray(errorData.non_field_errors)) {
-          errorMessage = errorData.non_field_errors[0];
-        }
+      if (errorData.non_field_errors && Array.isArray(errorData.non_field_errors)) {
+        errorMessage = errorData.non_field_errors[0];
+      }
         
         // Handle field-specific validation errors
-        if (errorData.errors && typeof errorData.errors === 'object') {
-          const errorMessages = Object.entries(errorData.errors)
-            .map(([field, messages]: [string, any]) => {
-              const msg = Array.isArray(messages) ? messages.join(', ') : String(messages);
-              return `${field}: ${msg}`;
-            })
-            .join('; ');
-          if (errorMessages) {
-            errorMessage = errorMessage ? `${errorMessage} (${errorMessages})` : errorMessages;
-          }
+      if (errorData.errors && typeof errorData.errors === 'object') {
+        const errorMessages = Object.entries(errorData.errors)
+          .map(([field, messages]: [string, any]) => {
+            const msg = Array.isArray(messages) ? messages.join(', ') : String(messages);
+            return `${field}: ${msg}`;
+          })
+          .join('; ');
+        if (errorMessages) {
+          errorMessage = errorMessage ? `${errorMessage} (${errorMessages})` : errorMessages;
         }
+      }
         
         // Handle DRF serializer errors (nested structure)
         if (errorData.username && Array.isArray(errorData.username)) {
@@ -268,18 +268,18 @@ class ApiClient {
           errorMessage = errorMessage ? `${errorMessage}; Mot de passe: ${pwdMsg}` : `Mot de passe: ${pwdMsg}`;
         }
         
-        if (!errorMessage) {
-          errorMessage = `HTTP error! status: ${response.status}`;
-        }
-        const error = new Error(errorMessage);
-        (error as any).status = response.status;
-        (error as any).data = errorData;
+      if (!errorMessage) {
+        errorMessage = `HTTP error! status: ${response.status}`;
+      }
+      const error = new Error(errorMessage);
+      (error as any).status = response.status;
+      (error as any).data = errorData;
         (error as any).locked = errorData.locked || false;
         (error as any).locked_until = errorData.locked_until;
-        throw error;
-      }
+      throw error;
+    }
 
-      return response.json();
+    return response.json();
     } catch (error: any) {
       // Handle network errors (Failed to fetch, CORS, etc.)
       if (error.name === 'TypeError' && error.message.includes('fetch')) {

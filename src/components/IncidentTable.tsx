@@ -320,7 +320,7 @@ export function IncidentTable({
               ${rowFields.map(field => `
                 <td class="label two-field-label" style="width: ${labelWidthPercent}% !important; min-width: ${labelWidthPercent}% !important; max-width: ${labelWidthPercent}% !important; height: auto !important; min-height: 0 !important; max-height: none !important; vertical-align: top !important; padding: 8px 12px !important; line-height: 1.3 !important; overflow: visible !important;">${field.label}</td>
                 <td class="value two-field-value" style="width: ${valueWidthPercent}% !important; min-width: ${valueWidthPercent}% !important; max-width: ${valueWidthPercent}% !important; height: auto !important; min-height: 0 !important; max-height: none !important; vertical-align: top !important; padding: 8px 12px !important; line-height: 1.3 !important; overflow: visible !important; word-break: break-word;">${escapeHtml(field.value)}</td>
-              `).join('')}
+        `).join('')}
               ${remainingFields > 0 ? Array(remainingFields * 2).fill('<td style="width: 0; height: 0; padding: 0; border: none; display: none;"></td>').join('') : ''}
             </tr>
           `);
@@ -487,7 +487,7 @@ export function IncidentTable({
               padding-bottom: 10px;
               margin-bottom: 20px;
             }
-              @media print {
+            @media print {
                 @page {
                   margin: 1cm;
                   size: A4;
@@ -498,7 +498,7 @@ export function IncidentTable({
                   max-width: 100% !important;
                   width: 100% !important;
                 }
-                .actions { display: none !important; }
+              .actions { display: none !important; }
                 .header { 
                   page-break-after: avoid; 
                   margin-bottom: 20px;
@@ -812,15 +812,15 @@ export function IncidentTable({
                       </Button>
                     )}
                     {canModifyIncident(incident) && onEdit && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditClick(incident)}
-                        className="flex items-center gap-2"
-                      >
-                        <Edit className="h-4 w-4" />
-                        <span className="hidden sm:inline">Modifier</span>
-                      </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditClick(incident)}
+                      className="flex items-center gap-2"
+                    >
+                      <Edit className="h-4 w-4" />
+                      <span className="hidden sm:inline">Modifier</span>
+                    </Button>
                     )}
                     {!showReportButton && canModifyIncident(incident) && onDelete && (
                       <Button

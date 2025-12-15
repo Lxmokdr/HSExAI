@@ -145,15 +145,15 @@ fi
 
 # Create default users (skip in production/containerized environments)
 if [ "${SKIP_DEFAULT_USERS:-}" != "true" ] && [ -z "${RENDER:-}" ]; then
-    echo -e "${BLUE}👥 Creating default users...${NC}"
+echo -e "${BLUE}👥 Creating default users...${NC}"
     if $PYTHON_CMD manage.py create_default_users 2>/dev/null; then
-        echo -e "${GREEN}✅ Default users created${NC}"
-    else
+    echo -e "${GREEN}✅ Default users created${NC}"
+else
         echo -e "${YELLOW}⚠️  Warning: Failed to create default users${NC}"
         if [ -z "$DB_PASSWORD" ] && command -v sudo &> /dev/null; then
             echo -e "${YELLOW}   You may need to run as postgres user${NC}"
         fi
-        echo -e "${YELLOW}   You can create users manually later${NC}"
+    echo -e "${YELLOW}   You can create users manually later${NC}"
     fi
 else
     echo -e "${YELLOW}⚠️  Skipping default user creation (containerized environment)${NC}"
