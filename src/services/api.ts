@@ -6,33 +6,48 @@
 // 2. Auto-detect production (if on Vercel domain, use Render backend)
 // 3. Fallback to localhost for local development
 function getApiBaseUrl(): string {
-  // Check if VITE_API_BASE_URL is explicitly set
-  if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
+  // Check if VITE_API_BASE_URL is explicitly set (from build-time env var)
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  if (envUrl && envUrl.trim() !== '') {
+    return envUrl;
   }
-  
-  // Auto-detect production environment
-  // If running on Vercel domain, use Render backend
+
+  // Auto-detect production environment at runtime
+  // If running on Vercel domain or any production domain, use Render backend
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
-    if (hostname.includes('vercel.app') || hostname.includes('onrender.com')) {
+    const protocol = window.location.protocol;
+
+    // Production detection: not localhost and not 127.0.0.1
+    const isProduction = hostname !== 'localhost' &&
+      hostname !== '127.0.0.1' &&
+      !hostname.startsWith('192.168.') &&
+      !hostname.startsWith('10.') &&
+      (hostname.includes('vercel.app') ||
+        hostname.includes('onrender.com') ||
+        hostname.includes('.com') ||
+        hostname.includes('.net') ||
+        hostname.includes('.org'));
+
+    if (isProduction) {
       return 'https://enna-atc-gestion-des-incidents.onrender.com/api';
     }
   }
-  
+
   // Fallback to localhost for local development
-  return 'http://localhost:8000/api';
+  return 'http://localhost:8001/api';
 }
 
 const API_BASE_URL = getApiBaseUrl();
 
-// Debug: Log the API URL being used
-if (import.meta.env.DEV) {
-  console.log('🔧 API Configuration:');
-  console.log('  - Base URL:', API_BASE_URL);
-  console.log('  - VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL || 'not set');
-  console.log('  - Hostname:', typeof window !== 'undefined' ? window.location.hostname : 'N/A');
-}
+// Always log the API URL being used (helps with debugging)
+console.log('🔧 API Configuration:');
+console.log('  - Base URL:', API_BASE_URL);
+console.log('  - VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL || 'not set');
+console.log('  - Hostname:', typeof window !== 'undefined' ? window.location.hostname : 'N/A');
+console.log('  - Mode:', import.meta.env.MODE || 'unknown');
+console.log('  - Dev:', import.meta.env.DEV ? 'true' : 'false');
+console.log('  - Prod:', import.meta.env.PROD ? 'true' : 'false');
 
 // Types
 export interface User {
@@ -70,12 +85,10 @@ export interface Incident {
   duree_arret?: number;
   maintenance_type?: 'preventive' | 'corrective';
   // Software fields
-  simulateur?: boolean;
-  salle_operationnelle?: boolean;
   server?: string;
-  position_STA?: string;
+  position?: string;
   type_d_anomalie?: string;
-  indicatif?: string;
+  call_sign?: string;
   nom_radar?: string;
   FL?: string;
   longitude?: string;
@@ -181,7 +194,7 @@ class ApiClient {
     if (storedToken) {
       this.token = storedToken;
     }
-    
+
     const url = `${this.baseURL}${endpoint}`;
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -195,12 +208,12 @@ class ApiClient {
     }
 
     try {
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      });
 
-    if (!response.ok) {
+      if (!response.ok) {
         // Handle 401 Unauthorized - try to refresh token
         if (response.status === 401 && this.refreshTokenValue && endpoint !== '/auth/refresh/') {
           try {
@@ -221,9 +234,9 @@ class ApiClient {
             localStorage.removeItem('enna_user');
           }
         }
-        
-      const errorData = await response.json().catch(() => ({}));
-        
+
+        const errorData = await response.json().catch(() => ({}));
+
         // Log error details for debugging (always log 400 errors to help diagnose issues)
         if (import.meta.env.DEV || response.status === 400) {
           console.error('❌ API Error Details:', {
@@ -237,28 +250,28 @@ class ApiClient {
             console.error('📋 Full Error Response:', JSON.stringify(errorData, null, 2));
           }
         }
-        
-      // Handle different error formats
+
+        // Handle different error formats
         let errorMessage = errorData.error || errorData.message || errorData.detail;
-        
+
         // Handle non_field_errors (common in DRF)
-      if (errorData.non_field_errors && Array.isArray(errorData.non_field_errors)) {
-        errorMessage = errorData.non_field_errors[0];
-      }
-        
-        // Handle field-specific validation errors
-      if (errorData.errors && typeof errorData.errors === 'object') {
-        const errorMessages = Object.entries(errorData.errors)
-          .map(([field, messages]: [string, any]) => {
-            const msg = Array.isArray(messages) ? messages.join(', ') : String(messages);
-            return `${field}: ${msg}`;
-          })
-          .join('; ');
-        if (errorMessages) {
-          errorMessage = errorMessage ? `${errorMessage} (${errorMessages})` : errorMessages;
+        if (errorData.non_field_errors && Array.isArray(errorData.non_field_errors)) {
+          errorMessage = errorData.non_field_errors[0];
         }
-      }
-        
+
+        // Handle field-specific validation errors
+        if (errorData.errors && typeof errorData.errors === 'object') {
+          const errorMessages = Object.entries(errorData.errors)
+            .map(([field, messages]: [string, any]) => {
+              const msg = Array.isArray(messages) ? messages.join(', ') : String(messages);
+              return `${field}: ${msg}`;
+            })
+            .join('; ');
+          if (errorMessages) {
+            errorMessage = errorMessage ? `${errorMessage} (${errorMessages})` : errorMessages;
+          }
+        }
+
         // Handle DRF serializer errors (nested structure)
         if (errorData.username && Array.isArray(errorData.username)) {
           errorMessage = `Nom d'utilisateur: ${errorData.username.join(', ')}`;
@@ -267,25 +280,25 @@ class ApiClient {
           const pwdMsg = errorData.password.join(', ');
           errorMessage = errorMessage ? `${errorMessage}; Mot de passe: ${pwdMsg}` : `Mot de passe: ${pwdMsg}`;
         }
-        
-      if (!errorMessage) {
-        errorMessage = `HTTP error! status: ${response.status}`;
-      }
-      const error = new Error(errorMessage);
-      (error as any).status = response.status;
-      (error as any).data = errorData;
+
+        if (!errorMessage) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+        const error = new Error(errorMessage);
+        (error as any).status = response.status;
+        (error as any).data = errorData;
         (error as any).locked = errorData.locked || false;
         (error as any).locked_until = errorData.locked_until;
-      throw error;
-    }
+        throw error;
+      }
 
-    return response.json();
+      return response.json();
     } catch (error: any) {
       // Handle network errors (Failed to fetch, CORS, etc.)
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
         const baseUrl = this.baseURL.replace('/api', '');
         let errorMessage = `Impossible de se connecter au serveur.`;
-        
+
         // Provide helpful message based on environment
         if (baseUrl.includes('localhost')) {
           errorMessage += ` Vérifiez que le backend est démarré sur ${baseUrl}`;
@@ -293,7 +306,7 @@ class ApiClient {
           errorMessage += ` Tentative de connexion à ${baseUrl}/api`;
           errorMessage += `\nVérifiez que le backend Render est en ligne et que CORS est configuré.`;
         }
-        
+
         const networkError = new Error(errorMessage);
         (networkError as any).status = 0;
         (networkError as any).isNetworkError = true;
@@ -308,27 +321,27 @@ class ApiClient {
   // ========================================================================
   // Authentication Methods
   // ========================================================================
-  
+
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     // Ensure credentials are properly formatted
     const loginData = {
       username: credentials.username?.trim() || '',
       password: credentials.password || '',
     };
-    
+
     // Debug log (always log for login to help diagnose issues)
-    console.log('🔐 Login request:', { 
-      username: loginData.username, 
+    console.log('🔐 Login request:', {
+      username: loginData.username,
       passwordLength: loginData.password.length,
       hasUsername: !!loginData.username,
       hasPassword: !!loginData.password,
     });
-    
+
     const response = await this.request<LoginResponse>('/auth/login/', {
       method: 'POST',
       body: JSON.stringify(loginData),
     });
-    
+
     this.token = response.token;
     this.setToken(response.token);
     if (response.refresh_token) {
@@ -336,7 +349,7 @@ class ApiClient {
     }
     localStorage.setItem('enna_token', response.token);
     localStorage.setItem('enna_user', JSON.stringify(response.user));
-    
+
     return response;
   }
 
@@ -425,16 +438,16 @@ class ApiClient {
   // ========================================================================
   // Incident Methods
   // ========================================================================
-  
+
   async getIncidents(params?: {
     type?: 'hardware' | 'software';
   }): Promise<{ results: Incident[]; count: number }> {
     const searchParams = new URLSearchParams();
     if (params?.type) searchParams.set('type', params.type);
-    
+
     const queryString = searchParams.toString();
     const endpoint = queryString ? `/incidents/?${queryString}` : '/incidents/';
-    
+
     return this.request<{ results: Incident[]; count: number }>(endpoint);
   }
 
@@ -451,10 +464,10 @@ class ApiClient {
 
   async updateIncident(id: number, incidentData: Partial<Incident>): Promise<Incident> {
     const incidentType = incidentData.incident_type;
-    const endpoint = incidentType === 'hardware' 
-      ? `/incidents/hardware/${id}/` 
+    const endpoint = incidentType === 'hardware'
+      ? `/incidents/hardware/${id}/`
       : `/incidents/software/${id}/`;
-    
+
     return this.request<Incident>(endpoint, {
       method: 'PUT',
       body: JSON.stringify(incidentData),
@@ -478,14 +491,14 @@ class ApiClient {
   // ========================================================================
   // Report Methods
   // ========================================================================
-  
+
   async getReports(params?: { incident?: number }): Promise<{ results: Report[]; count: number }> {
     const searchParams = new URLSearchParams();
     if (params?.incident) searchParams.set('incident', params.incident.toString());
-    
+
     const queryString = searchParams.toString();
     const endpoint = queryString ? `/reports/?${queryString}` : '/reports/';
-    
+
     return this.request<{ results: Report[]; count: number }>(endpoint);
   }
 
@@ -516,15 +529,15 @@ class ApiClient {
   // ========================================================================
   // Equipment Methods
   // ========================================================================
-  
+
   async getEquipment(params?: { num_serie?: string; search_serie?: string }): Promise<{ results: Equipment[]; count: number } | Equipment | { results: string[]; count: number }> {
     const searchParams = new URLSearchParams();
     if (params?.num_serie) searchParams.set('num_serie', params.num_serie);
     if (params?.search_serie) searchParams.set('search_serie', params.search_serie);
-    
+
     const queryString = searchParams.toString();
     const endpoint = queryString ? `/equipement/?${queryString}` : '/equipement/';
-    
+
     return this.request<{ results: Equipment[]; count: number } | Equipment | { results: string[]; count: number }>(endpoint);
   }
 
@@ -559,7 +572,7 @@ class ApiClient {
   // ========================================================================
   // User Management Methods (superadmin only)
   // ========================================================================
-  
+
   async getUsers(): Promise<{ results: User[]; count: number }> {
     return this.request<{ results: User[]; count: number }>('/users/');
   }

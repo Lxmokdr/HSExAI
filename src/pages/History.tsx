@@ -7,12 +7,14 @@ import { IncidentTable } from "@/components/IncidentTable";
 import { useIncidents } from "@/hooks/useIncidents";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Search, Cpu, HardDrive } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function History() {
+  const navigate = useNavigate();
   const { hardwareIncidents, softwareIncidents } = useIncidents();
   const permissions = usePermissions();
   const [activeTab, setActiveTab] = useState<"hardware" | "software">("hardware");
-  
+
   // Set initial tab based on permissions
   useEffect(() => {
     if (!permissions.canAccessHardwareIncidents && permissions.canAccessSoftwareIncidents) {
@@ -21,7 +23,7 @@ export default function History() {
       setActiveTab("hardware");
     }
   }, [permissions]);
-  
+
   const [hardwareFilters, setHardwareFilters] = useState({
     search: "",
   });
@@ -68,16 +70,16 @@ export default function History() {
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "hardware" | "software")} className="w-full">
         <TabsList className={`grid w-full ${permissions.canAccessHardwareIncidents && permissions.canAccessSoftwareIncidents ? 'grid-cols-2' : 'grid-cols-1'}`}>
           {permissions.canAccessHardwareIncidents && (
-          <TabsTrigger value="hardware" className="flex items-center gap-2">
-            <Cpu className="h-4 w-4" />
-            Incidents Matériels ({hardwareIncidents.length})
-          </TabsTrigger>
+            <TabsTrigger value="hardware" className="flex items-center gap-2">
+              <Cpu className="h-4 w-4" />
+              Incidents Matériels ({hardwareIncidents.length})
+            </TabsTrigger>
           )}
           {permissions.canAccessSoftwareIncidents && (
-          <TabsTrigger value="software" className="flex items-center gap-2">
-            <HardDrive className="h-4 w-4" />
-            Incidents Logiciels ({softwareIncidents.length})
-          </TabsTrigger>
+            <TabsTrigger value="software" className="flex items-center gap-2">
+              <HardDrive className="h-4 w-4" />
+              Incidents Logiciels ({softwareIncidents.length})
+            </TabsTrigger>
           )}
         </TabsList>
 
@@ -114,7 +116,10 @@ export default function History() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <IncidentTable incidents={filteredHardwareIncidents} />
+              <IncidentTable
+                incidents={filteredHardwareIncidents}
+                onEdit={(id) => navigate(`/incident/edit/${id}`)}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -152,7 +157,10 @@ export default function History() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <IncidentTable incidents={filteredSoftwareIncidents} />
+              <IncidentTable
+                incidents={filteredSoftwareIncidents}
+                onEdit={(id) => navigate(`/incident/edit/${id}`)}
+              />
             </CardContent>
           </Card>
         </TabsContent>

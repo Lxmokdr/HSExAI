@@ -113,7 +113,7 @@ echo -e "${GREEN}✅ Dependencies ready${NC}"
 
 # Kill existing processes on required ports
 echo -e "${BLUE}🧹 Cleaning up existing processes...${NC}"
-kill_port 8000  # Backend
+kill_port 8001  # Backend
 kill_port 8080  # Frontend
 
 # Start Django Backend
@@ -168,13 +168,13 @@ if [ -z "$DB_PASSWORD" ] || [ "$DB_PASSWORD" = "enna_password" ] || [ -z "${DB_P
     if sudo -n -u postgres true 2>/dev/null; then
         # Passwordless sudo available
         echo -e "${GREEN}✅ Using passwordless sudo for peer authentication${NC}"
-            SERVER_PORT=${PORT:-8000}
+            SERVER_PORT=${PORT:-8001}
             sudo -E -u postgres env PATH="$PATH" "$PYTHON_CMD" manage.py runserver 0.0.0.0:$SERVER_PORT &
         BACKEND_PID=$!
     else
         # Try running anyway - might work with passwordless sudo configured
         echo -e "${YELLOW}⚠️  Attempting to use sudo (passwordless sudo may be configured)...${NC}"
-            SERVER_PORT=${PORT:-8000}
+            SERVER_PORT=${PORT:-8001}
             if sudo -E -u postgres env PATH="$PATH" "$PYTHON_CMD" manage.py runserver 0.0.0.0:$SERVER_PORT & 2>/dev/null; then
         BACKEND_PID=$!
         sleep 2
@@ -193,7 +193,7 @@ if [ -z "$DB_PASSWORD" ] || [ "$DB_PASSWORD" = "enna_password" ] || [ -z "${DB_P
         # No sudo available - use environment variables
         echo -e "${YELLOW}⚠️  Sudo not available. Using environment variables${NC}"
         export DB_PASSWORD DB_USER DB_NAME DB_HOST DB_PORT
-        SERVER_PORT=${PORT:-8000}
+        SERVER_PORT=${PORT:-8001}
         $PYTHON_CMD manage.py runserver 0.0.0.0:$SERVER_PORT &
         BACKEND_PID=$!
     fi
@@ -205,7 +205,7 @@ else
     export DB_PASSWORD DB_USER DB_NAME DB_HOST DB_PORT
     
     # Use PORT environment variable if set (Render, Heroku, etc.), otherwise default to 8000
-    SERVER_PORT=${PORT:-8000}
+    SERVER_PORT=${PORT:-8001}
     $PYTHON_CMD manage.py runserver 0.0.0.0:$SERVER_PORT &
     BACKEND_PID=$!
 fi
@@ -271,7 +271,7 @@ echo "=================================================="
 if [ -z "${SKIP_FRONTEND:-}" ] && [ "${NODE_ENV}" != "production" ]; then
 echo -e "${BLUE}📱 Frontend:${NC}     http://localhost:8080"
 fi
-echo -e "${BLUE}🔧 Backend API:${NC}   http://localhost:${SERVER_PORT:-8000} (Django)"
+echo -e "${BLUE}🔧 Backend API:${NC}   http://localhost:${SERVER_PORT:-8001} (Django)"
 echo ""
 echo -e "${YELLOW}👥 Default Users (Password: 01010101):${NC}"
 echo "   • technicien1, technicien2"

@@ -151,8 +151,8 @@ class SoftwareIncidentSerializer(serializers.ModelSerializer):
     class Meta:
         model = SoftwareIncident
         fields = [
-            'id', 'incident_type', 'date', 'time', 'simulateur', 'salle_operationnelle',
-            'server', 'partition', 'position_STA', 'type_d_anomalie', 'indicatif',
+            'id', 'incident_type', 'date', 'time',
+            'server', 'partition', 'position', 'type_d_anomalie', 'call_sign',
             'nom_radar', 'FL', 'longitude', 'latitude', 'code_SSR', 'sujet',
             'description', 'commentaires', 'created_at', 'updated_at'
         ]

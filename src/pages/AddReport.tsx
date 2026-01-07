@@ -152,12 +152,17 @@ export default function AddReport() {
       <html>
         <head>
           <meta charset="UTF-8">
-          <title>Rapport d'analyse des anomalies signalées par les ${escapeHtml(partition)}</title>
+          <title>Fiche incident software - Rapport</title>
           <style>
             @media print {
               @page {
                 size: A4 landscape;
-                margin: 2cm;
+                margin: 0;
+                /* Remove browser default headers/footers */
+                marks: none;
+              }
+              body {
+                padding: 2cm;
               }
             }
             body {
@@ -167,11 +172,22 @@ export default function AddReport() {
               margin: 0;
               padding: 20px;
             }
-            .title {
+            .header {
               text-align: center;
+              margin-bottom: 30px;
+              position: relative;
+            }
+            .header-code {
+              position: absolute;
+              top: 0;
+              left: 0;
+              font-weight: bold;
+              font-size: 14px;
+              color: #333;
+            }
+            .title {
               font-size: 18px;
               font-weight: bold;
-              margin-bottom: 30px;
               text-transform: uppercase;
             }
             .entete {
@@ -229,8 +245,11 @@ export default function AddReport() {
           </style>
         </head>
         <body>
+          <div class="header">
+            <div class="header-code">DE/DS/SID</div>
           <div class="title">
-            Rapport d'analyse des anomalies signalées par les ${escapeHtml(partition)}
+              Fiche incident software
+            </div>
           </div>
 
           <div class="entete">
@@ -249,7 +268,7 @@ export default function AddReport() {
             <tbody>
               <tr>
                 <td class="anomalie content">${escapeHtml(report.anomaly)}</td>
-                <td class="date">${escapeHtml(report.date)}</td>
+                <td class="date">${escapeHtml(incident.date)}</td>
                 <td class="analyse content">${escapeHtml(report.analysis)}</td>
                 <td class="conclusion content">${escapeHtml(report.conclusion)}</td>
               </tr>

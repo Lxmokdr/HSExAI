@@ -34,7 +34,7 @@ export function usePermissions() {
       canAccessReports: isServiceIntegration || isChefDepartement || isSuperadmin,
       canAccessDashboards: isChefDepartement || isSuperadmin,
       canModifyHardwareIncidents: isServiceMaintenance || isSuperadmin,
-      canModifySoftwareIncidents: isServiceIntegration || isSuperadmin,
+      canModifySoftwareIncidents: isServiceIntegration || isServiceMaintenance || isSuperadmin,
       canModifyEquipment: isServiceMaintenance || isSuperadmin,
       canModifyReports: isServiceIntegration || isSuperadmin,
       isReadOnly: isChefDepartement,

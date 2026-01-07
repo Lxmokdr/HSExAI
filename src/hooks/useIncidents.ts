@@ -172,13 +172,11 @@ export function useIncidents() {
         incident_type: 'software' as const,
         date: data.date,
         time: incidentTime,
-        simulateur: Boolean(data.simulateur),
-        salle_operationnelle: Boolean(data.salle_operationnelle),
         server: data.server || undefined,
         partition: data.partition || undefined,
-        position_STA: data.position_STA || undefined,
+        position: data.position || undefined,
         type_d_anomalie: data.type_d_anomalie || undefined,
-        indicatif: data.indicatif || undefined,
+        call_sign: data.call_sign || undefined,
         nom_radar: data.nom_radar || undefined,
         FL: data.FL || undefined,
         longitude: data.longitude || undefined,
@@ -193,6 +191,7 @@ export function useIncidents() {
       // Reload all incidents to ensure we have the latest data
       await loadIncidents();
       loadStats(); // Refresh stats
+      return newIncident; // Return the created incident
     } catch (err: any) {
       setError(err.message || "Erreur lors de la création de l'incident logiciel");
       throw err;
@@ -244,13 +243,11 @@ export function useIncidents() {
         incident_type: 'software' as const,
         date: data.date,
         time: data.time,
-        simulateur: data.simulateur,
-        salle_operationnelle: data.salle_operationnelle,
         server: data.server,
         partition: data.partition,
-        position_STA: data.position_STA,
+        position: data.position,
         type_d_anomalie: data.type_d_anomalie,
-        indicatif: data.indicatif,
+        call_sign: data.call_sign,
         nom_radar: data.nom_radar,
         FL: data.FL,
         longitude: data.longitude,

@@ -28,6 +28,7 @@ import HistoryHardware from "./pages/HistoryHardware";
 import HistorySoftware from "./pages/HistorySoftware";
 import Equipment from "./pages/Equipment";
 import Users from "./pages/Users";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -92,7 +93,7 @@ const AppRoutes = () => {
         <Route 
           path="/software" 
           element={
-            <ProtectedRoute requirePermission="canAccessSoftwareIncidents">
+            <ProtectedRoute requireAny={['canAccessSoftwareIncidents', 'canModifySoftwareIncidents']}>
               <SoftwareIncidents />
             </ProtectedRoute>
           } 
@@ -135,6 +136,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute requirePermission="canAccessSoftwareIncidents">
               <HistorySoftware />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/reports" 
+          element={
+            <ProtectedRoute requirePermission="canAccessReports">
+              <Reports />
             </ProtectedRoute>
           } 
         />

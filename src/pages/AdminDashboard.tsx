@@ -1,140 +1,231 @@
 import { useState, useMemo } from "react";
-import { AlertTriangle, Cpu, HardDrive, Clock, TrendingUp, Calendar, ArrowUpDown, Server } from "lucide-react";
+import { AlertTriangle, Cpu, HardDrive, Clock, TrendingUp, Calendar, Server } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useIncidents } from "@/hooks/useIncidents";
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 type PeriodType = 'week' | 'month' | 'year';
 
+// Chart colors
+const CHART_COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899'];
+
 export default function AdminDashboard() {
-  const { hardwareIncidents, softwareIncidents, stats, loading } = useIncidents();
+  const { hardwareIncidents, softwareIncidents, stats } = useIncidents();
   
-  const [hardwareSortBy, setHardwareSortBy] = useState<string>("date-desc");
-  const [softwareSortBy, setSoftwareSortBy] = useState<string>("date-desc");
-  const [periodType, setPeriodType] = useState<PeriodType>('month');
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
   
-  // Get available years from incidents
+  // Constants
+  const currentYear = new Date().getFullYear();
+  const isCurrentYear = selectedYear === currentYear;
+
+  // ============================================================================
+  // Helper Functions
+  // ============================================================================
+
+  /**
+   * Get week number of the year (ISO week) for period grouping
+   */
+  const getWeekNumber = (date: Date): number => {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  };
+
+  /**
+   * Get Monday of the week for a given date
+   */
+  const getMondayOfWeek = (date: Date): Date => {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(d.setDate(diff));
+  };
+
+  /**
+   * Get week number of the month (1-4)
+   */
+  const getWeekOfMonth = (date: Date): number => {
+    const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+    const firstDayOfWeek = firstDay.getDay() || 7;
+    const dayOfMonth = date.getDate();
+    return Math.min(Math.ceil((dayOfMonth + firstDayOfWeek - 1) / 7), 4);
+  };
+
+  /**
+   * Get period key from date based on period type
+   */
+  const getPeriodKey = (date: Date, period: PeriodType): string => {
+    if (period === 'week') {
+      const year = date.getFullYear();
+      const week = getWeekNumber(date);
+      const monday = getMondayOfWeek(date);
+      const month = monday.toLocaleDateString('fr-FR', { month: 'short' });
+      return `${year}-S${week.toString().padStart(2, '0')} (${month})`;
+    } else if (period === 'month') {
+      return date.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
+    } else {
+      return date.getFullYear().toString();
+    }
+  };
+
+  /**
+   * Normalize anomaly type to standard values
+   */
+  const normalizeAnomalyType = (type: string | undefined): string => {
+    if (!type) return 'Non spécifié';
+    const normalized = type.toLowerCase().trim();
+    if (normalized === 'systeme' || normalized === 'systématique' || normalized === 'systematique') {
+      return 'Systématique';
+    }
+    if (normalized === 'aleatoire' || normalized === 'aléatoire') {
+      return 'Aléatoire';
+    }
+    return type;
+  };
+
+  /**
+   * Get incident date from incident object
+   */
+  const getIncidentDate = (incident: { date?: string; created_at?: string }): Date => {
+    return new Date(incident.date || incident.created_at || Date.now());
+  };
+
+  /**
+   * Check if incident matches period filters
+   */
+  const matchesPeriodFilter = (incidentDate: Date): boolean => {
+    const incidentYear = incidentDate.getFullYear();
+    const incidentMonth = incidentDate.getMonth() + 1;
+    
+    if (incidentYear !== selectedYear) return false;
+    if (selectedMonth !== null && incidentMonth !== selectedMonth) return false;
+    if (selectedWeek !== null && selectedMonth !== null) {
+      const incidentWeekOfMonth = getWeekOfMonth(incidentDate);
+      if (incidentWeekOfMonth !== selectedWeek) return false;
+    }
+    return true;
+  };
+
+  /**
+   * Aggregate incidents by a key field
+   */
+  const aggregateByKey = <T extends { [key: string]: any }>(
+    incidents: T[],
+    keyExtractor: (incident: T) => string
+  ): Array<{ name: string; value: number }> => {
+    const map: Record<string, number> = {};
+    incidents.forEach(incident => {
+      const key = keyExtractor(incident) || 'Non spécifié';
+      map[key] = (map[key] || 0) + 1;
+    });
+    return Object.entries(map)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, value]) => ({ name, value }));
+  };
+
+  /**
+   * Format period title for display
+   */
+  const formatPeriodTitle = (): string => {
+    if (selectedMonth !== null) {
+      const monthName = new Date(selectedYear, selectedMonth - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+      return selectedWeek !== null ? ` - ${monthName} - Semaine ${selectedWeek}` : ` - ${monthName}`;
+    }
+    return ` - ${selectedYear}`;
+  };
+
+  // ============================================================================
+  // Event Handlers
+  // ============================================================================
+
+  const handleYearChange = (value: string) => {
+    const newYear = parseInt(value);
+    setSelectedYear(newYear);
+    setSelectedMonth(null);
+    setSelectedWeek(null);
+  };
+
+  const handleMonthChange = (value: string) => {
+    const newMonth = value === "all" ? null : parseInt(value);
+    setSelectedMonth(newMonth);
+    if (newMonth === null) {
+      setSelectedWeek(null);
+    } else if (selectedWeek !== null && selectedWeek > 4) {
+      setSelectedWeek(null);
+    }
+  };
+
+  const handleWeekChange = (value: string) => {
+    setSelectedWeek(value === "all" ? null : parseInt(value));
+  };
+
+  // ============================================================================
+  // Computed Values
+  // ============================================================================
+
+  // Available years from incidents
   const availableYears = useMemo(() => {
     const years = new Set<number>();
     [...hardwareIncidents, ...softwareIncidents].forEach(incident => {
-      const date = new Date(incident.date || incident.created_at || Date.now());
+      const date = getIncidentDate(incident);
       years.add(date.getFullYear());
     });
-    return Array.from(years).sort((a, b) => b - a); // Most recent first
+    return Array.from(years).sort((a, b) => b - a);
   }, [hardwareIncidents, softwareIncidents]);
-  
-  const currentYear = new Date().getFullYear();
-  const isCurrentYear = selectedYear === currentYear;
-  
-  // Filter incidents by selected year and maintenance type
+
+  // Available weeks for selected month (1-4)
+  const availableWeeks = useMemo(() => {
+    if (selectedMonth === null) {
+      return [];
+    }
+    return [1, 2, 3, 4];
+  }, [selectedMonth]);
+
+  // Effective period type based on selections
+  const effectivePeriodType = useMemo(() => {
+    if (selectedWeek !== null) return 'week';
+    if (selectedMonth !== null) return 'month';
+    return 'year';
+  }, [selectedWeek, selectedMonth]);
+
+  // ============================================================================
+  // Filtered Data
+  // ============================================================================
+
   const filteredHardwareIncidents = useMemo(() => {
     return hardwareIncidents.filter(incident => {
-      const incidentDate = new Date(incident.date || incident.created_at || Date.now());
-      const incidentYear = incidentDate.getFullYear();
-      
-      // Filter by year
-      if (incidentYear !== selectedYear) {
-        return false;
-      }
-      
-      // For previous years, only show corrective maintenance
-      if (!isCurrentYear && incident.maintenance_type !== 'corrective') {
-        return false;
-      }
-      
+      const incidentDate = getIncidentDate(incident);
+      if (!matchesPeriodFilter(incidentDate)) return false;
+      if (!isCurrentYear && incident.maintenance_type !== 'corrective') return false;
       return true;
     });
-  }, [hardwareIncidents, selectedYear, isCurrentYear]);
+  }, [hardwareIncidents, selectedYear, selectedMonth, selectedWeek, isCurrentYear]);
   
   const filteredSoftwareIncidents = useMemo(() => {
     return softwareIncidents.filter(incident => {
-      const incidentDate = new Date(incident.date || incident.created_at || Date.now());
-      const incidentYear = incidentDate.getFullYear();
-      return incidentYear === selectedYear;
+      const incidentDate = getIncidentDate(incident);
+      return matchesPeriodFilter(incidentDate);
     });
-  }, [softwareIncidents, selectedYear]);
-  
-  const sortedHardwareIncidents = useMemo(() => {
-    return [...filteredHardwareIncidents].sort((a, b) => {
-      switch (hardwareSortBy) {
-        case "date-desc":
-          return new Date(b.created_at || b.date).getTime() - new Date(a.created_at || a.date).getTime();
-        case "date-asc":
-          return new Date(a.created_at || a.date).getTime() - new Date(b.created_at || b.date).getTime();
-        case "equipement-asc":
-          const eqA = a.nom_de_equipement || '';
-          const eqB = b.nom_de_equipement || '';
-          return eqA.localeCompare(eqB);
-        case "equipement-desc":
-          const eqA2 = a.nom_de_equipement || '';
-          const eqB2 = b.nom_de_equipement || '';
-          return eqB2.localeCompare(eqA2);
-        case "duree-asc":
-          const durA = a.duree_arret || 0;
-          const durB = b.duree_arret || 0;
-          return durA - durB;
-        case "duree-desc":
-          const durA2 = a.duree_arret || 0;
-          const durB2 = b.duree_arret || 0;
-          return durB2 - durA2;
-        default:
-          return 0;
-      }
-    });
-  }, [filteredHardwareIncidents, hardwareSortBy]);
-  
-  const sortedSoftwareIncidents = useMemo(() => {
-    return [...filteredSoftwareIncidents].sort((a, b) => {
-      switch (softwareSortBy) {
-        case "date-desc":
-          return new Date(b.created_at || b.date).getTime() - new Date(a.created_at || a.date).getTime();
-        case "date-asc":
-          return new Date(a.created_at || a.date).getTime() - new Date(b.created_at || b.date).getTime();
-        case "serveur-asc":
-          const srvA = a.server || '';
-          const srvB = b.server || '';
-          return srvA.localeCompare(srvB);
-        case "serveur-desc":
-          const srvA2 = a.server || '';
-          const srvB2 = b.server || '';
-          return srvB2.localeCompare(srvA2);
-        case "sujet-asc":
-          const sujetA = a.sujet || '';
-          const sujetB = b.sujet || '';
-          return sujetA.localeCompare(sujetB);
-        case "sujet-desc":
-          const sujetA2 = a.sujet || '';
-          const sujetB2 = b.sujet || '';
-          return sujetB2.localeCompare(sujetA2);
-        default:
-          return 0;
-      }
-    });
-  }, [filteredSoftwareIncidents, softwareSortBy]);
-  
-  // Calculate statistics using filtered incidents
+  }, [softwareIncidents, selectedYear, selectedMonth, selectedWeek]);
+
+  // ============================================================================
+  // Statistics
+  // ============================================================================
+
   const incidentsWithDowntime = useMemo(() => {
     return filteredHardwareIncidents.filter(i => i.duree_arret && i.duree_arret > 0);
   }, [filteredHardwareIncidents]);
   
-  const serverStats = useMemo(() => {
-    const stats: Record<string, number> = {};
-    filteredSoftwareIncidents.forEach(inc => {
-      if (inc.server) {
-        stats[inc.server] = (stats[inc.server] || 0) + 1;
-      }
-    });
-    return Object.entries(stats).sort((a, b) => b[1] - a[1]);
-  }, [filteredSoftwareIncidents]);
-  
   const hardwareServerStats = useMemo(() => {
     const stats: Record<string, number> = {};
     filteredHardwareIncidents.forEach(inc => {
-      // For hardware, we can use partition as server equivalent, or extract server from equipment name
       const server = inc.partition || 'Non spécifié';
       stats[server] = (stats[server] || 0) + 1;
     });
@@ -163,7 +254,11 @@ export default function AdminDashboard() {
     return stats;
   }, [filteredHardwareIncidents]);
   
-  // Prepare data for charts
+  // ============================================================================
+  // Chart Data
+  // ============================================================================
+
+  // Incidents by day (last 30 days)
   const incidentsByDay = useMemo(() => {
     const last30Days = Array.from({ length: 30 }, (_, i) => {
       const date = new Date();
@@ -178,175 +273,63 @@ export default function AdminDashboard() {
       };
     });
 
-    filteredHardwareIncidents.forEach(incident => {
+    const addIncidentToDay = (incident: { date?: string; created_at?: string }, type: 'hardware' | 'software') => {
       const incidentDate = incident.date || incident.created_at?.split('T')[0];
       if (incidentDate) {
         const dayData = last30Days.find(d => d.date === incidentDate);
         if (dayData) {
-          dayData.hardware++;
+          dayData[type]++;
           dayData.total++;
         }
       }
-    });
-    
-    filteredSoftwareIncidents.forEach(incident => {
-      const incidentDate = incident.date || incident.created_at?.split('T')[0];
-      if (incidentDate) {
-        const dayData = last30Days.find(d => d.date === incidentDate);
-        if (dayData) {
-          dayData.software++;
-          dayData.total++;
-        }
-      }
-    });
+    };
+
+    filteredHardwareIncidents.forEach(incident => addIncidentToDay(incident, 'hardware'));
+    filteredSoftwareIncidents.forEach(incident => addIncidentToDay(incident, 'software'));
 
     return last30Days;
   }, [filteredHardwareIncidents, filteredSoftwareIncidents]);
 
-  // Bar chart data for top servers (separated by hardware/software)
-  const topHardwareServersData = useMemo(() => {
-    const servers: Record<string, number> = {};
-    filteredHardwareIncidents.forEach(inc => {
-      const server = inc.partition || 'Non spécifié';
-      servers[server] = (servers[server] || 0) + 1;
-    });
-    return Object.entries(servers)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([name, value]) => ({ name, value }));
+  // Hardware incidents by equipment
+  const hardwareIncidentsByEquipmentForPeriod = useMemo(() => {
+    return aggregateByKey(filteredHardwareIncidents, inc => inc.nom_de_equipement || '');
   }, [filteredHardwareIncidents]);
 
-  const topSoftwareServersData = useMemo(() => {
-    const servers: Record<string, number> = {};
-    filteredSoftwareIncidents.forEach(inc => {
-      if (inc.server) {
-        servers[inc.server] = (servers[inc.server] || 0) + 1;
-      }
-    });
-    return Object.entries(servers)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([name, value]) => ({ name, value }));
+  // Software incidents by server
+  const softwareIncidentsByServerForPeriod = useMemo(() => {
+    return aggregateByKey(filteredSoftwareIncidents, inc => inc.server || '');
   }, [filteredSoftwareIncidents]);
 
-  // Monthly trend data
-  const monthlyTrend = useMemo(() => {
-    const months: Record<string, { hardware: number; software: number }> = {};
-    filteredHardwareIncidents.forEach(incident => {
-      const date = new Date(incident.date || incident.created_at || Date.now());
-      const monthKey = date.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
-      if (!months[monthKey]) {
-        months[monthKey] = { hardware: 0, software: 0 };
-      }
-      months[monthKey].hardware++;
-    });
-    filteredSoftwareIncidents.forEach(incident => {
-      const date = new Date(incident.date || incident.created_at || Date.now());
-      const monthKey = date.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
-      if (!months[monthKey]) {
-        months[monthKey] = { hardware: 0, software: 0 };
-      }
-      months[monthKey].software++;
-    });
-    return Object.entries(months)
-      .map(([month, data]) => ({ month, ...data, total: data.hardware + data.software }))
-      .slice(-6); // Last 6 months
-  }, [filteredHardwareIncidents, filteredSoftwareIncidents]);
-
-  const COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899'];
-
-  // Helper function to get period key from date
-  const getPeriodKey = (date: Date, period: PeriodType): string => {
-    if (period === 'week') {
-      const year = date.getFullYear();
-      const week = getWeekNumber(date);
-      // Get the Monday of the week for better sorting
-      const monday = getMondayOfWeek(date);
-      const month = monday.toLocaleDateString('fr-FR', { month: 'short' });
-      return `${year}-S${week.toString().padStart(2, '0')} (${month})`;
-    } else if (period === 'month') {
-      return date.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
-    } else {
-      return date.getFullYear().toString();
-    }
-  };
-
-  // Helper function to get Monday of the week
-  const getMondayOfWeek = (date: Date): Date => {
-    const d = new Date(date);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
-    return new Date(d.setDate(diff));
-  };
-
-  // Helper function to get week number
-  const getWeekNumber = (date: Date): number => {
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-  };
-
-  // Total incidents by period
-  const incidentsByPeriod = useMemo(() => {
-    const periodMap: Record<string, { total: number; hardware: number; software: number }> = {};
-    
-    filteredHardwareIncidents.forEach(incident => {
-      const incidentDate = new Date(incident.date || incident.created_at || Date.now());
-      const periodKey = getPeriodKey(incidentDate, periodType);
-      
-      if (!periodMap[periodKey]) {
-        periodMap[periodKey] = { total: 0, hardware: 0, software: 0 };
-      }
-      
-      periodMap[periodKey].total++;
-      periodMap[periodKey].hardware++;
-    });
-    
-    filteredSoftwareIncidents.forEach(incident => {
-      const incidentDate = new Date(incident.date || incident.created_at || Date.now());
-      const periodKey = getPeriodKey(incidentDate, periodType);
-      
-      if (!periodMap[periodKey]) {
-        periodMap[periodKey] = { total: 0, hardware: 0, software: 0 };
-      }
-      
-      periodMap[periodKey].total++;
-      periodMap[periodKey].software++;
-    });
-
-    return Object.entries(periodMap)
-      .map(([period, data]) => ({ period, ...data }))
-      .sort((a, b) => {
-        // Sort by period key (works for year, month, and week formats)
-        return a.period.localeCompare(b.period);
-      });
-  }, [filteredHardwareIncidents, filteredSoftwareIncidents, periodType]);
-
-  // Incidents by equipment
-  const incidentsByEquipment = useMemo(() => {
+  // Downtime by equipment
+  const downtimeByEquipment = useMemo(() => {
     const equipmentMap: Record<string, number> = {};
     
     filteredHardwareIncidents.forEach(incident => {
-      const equipmentName = incident.nom_de_equipement || 'Non spécifié';
-      equipmentMap[equipmentName] = (equipmentMap[equipmentName] || 0) + 1;
+      if (incident.duree_arret && incident.duree_arret > 0) {
+        const equipmentName = incident.nom_de_equipement || 'Non spécifié';
+        equipmentMap[equipmentName] = (equipmentMap[equipmentName] || 0) + incident.duree_arret;
+      }
     });
 
     return Object.entries(equipmentMap)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 15) // Top 15 equipment
-      .map(([name, value]) => ({ name, value }));
+      .map(([name, minutes]) => ({ 
+        name, 
+        minutes,
+        hours: Math.floor(minutes / 60),
+        mins: minutes % 60,
+        display: `${Math.floor(minutes / 60)}h ${minutes % 60}min`
+      }));
   }, [filteredHardwareIncidents]);
 
-  // Software incidents by anomaly type (grouped by period)
+  // Software incidents by anomaly type
   const softwareIncidentsByAnomaly = useMemo(() => {
     const anomalyMap: Record<string, Record<string, number>> = {};
     
     filteredSoftwareIncidents.forEach(incident => {
-      const anomalyType = incident.type_d_anomalie || 'Non spécifié';
-      const incidentDate = new Date(incident.date || incident.created_at || Date.now());
-      const periodKey = getPeriodKey(incidentDate, periodType);
+      const anomalyType = normalizeAnomalyType(incident.type_d_anomalie);
+      const incidentDate = getIncidentDate(incident);
+      const periodKey = getPeriodKey(incidentDate, effectivePeriodType);
       
       if (!anomalyMap[anomalyType]) {
         anomalyMap[anomalyType] = {};
@@ -355,9 +338,20 @@ export default function AdminDashboard() {
       anomalyMap[anomalyType][periodKey] = (anomalyMap[anomalyType][periodKey] || 0) + 1;
     });
 
+    // Filter to only show Systématique and Aléatoire
+    const allowedTypes = ['Systématique', 'Aléatoire'];
+    const filteredAnomalyMap: Record<string, Record<string, number>> = {};
+    allowedTypes.forEach(type => {
+      if (anomalyMap[type]) {
+        filteredAnomalyMap[type] = anomalyMap[type];
+      } else {
+        filteredAnomalyMap[type] = {};
+      }
+    });
+
     // Get all unique periods
     const allPeriods = new Set<string>();
-    Object.values(anomalyMap).forEach(periodData => {
+    Object.values(filteredAnomalyMap).forEach(periodData => {
       Object.keys(periodData).forEach(period => allPeriods.add(period));
     });
     const sortedPeriods = Array.from(allPeriods).sort();
@@ -365,33 +359,32 @@ export default function AdminDashboard() {
     // Transform to chart data format
     const chartData = sortedPeriods.map(period => {
       const data: Record<string, any> = { period };
-      Object.keys(anomalyMap).forEach(anomalyType => {
-        data[anomalyType] = anomalyMap[anomalyType][period] || 0;
+      allowedTypes.forEach(anomalyType => {
+        data[anomalyType] = filteredAnomalyMap[anomalyType][period] || 0;
       });
       return data;
     });
 
     return {
       chartData,
-      anomalyTypes: Object.keys(anomalyMap).sort(),
-      anomalyCounts: Object.entries(anomalyMap).map(([type, periods]) => ({
+      anomalyTypes: allowedTypes,
+      anomalyCounts: allowedTypes.map(type => ({
         type,
-        total: Object.values(periods).reduce((sum, count) => sum + count, 0)
+        total: Object.values(filteredAnomalyMap[type] || {}).reduce((sum, count) => sum + count, 0)
       })).sort((a, b) => b.total - a.total)
     };
-  }, [filteredSoftwareIncidents, periodType]);
+  }, [filteredSoftwareIncidents, effectivePeriodType]);
 
   // Corrective incidents comparison across years (using ALL incidents, not filtered)
   const correctiveIncidentsByYear = useMemo(() => {
     const yearMap: Record<number, number> = {};
     
-    hardwareIncidents.forEach(incident => {
-      if (incident.maintenance_type === 'corrective') {
-        const incidentDate = new Date(incident.date || incident.created_at || Date.now());
-        const year = incidentDate.getFullYear();
+    hardwareIncidents
+      .filter(incident => incident.maintenance_type === 'corrective')
+      .forEach(incident => {
+        const year = getIncidentDate(incident).getFullYear();
         yearMap[year] = (yearMap[year] || 0) + 1;
-      }
-    });
+      });
 
     return Object.entries(yearMap)
       .map(([year, count]) => ({ year: parseInt(year), count }))
@@ -402,17 +395,17 @@ export default function AdminDashboard() {
   const correctiveIncidentsByServer = useMemo(() => {
     const serverMap: Record<string, number> = {};
     
-    hardwareIncidents.forEach(incident => {
-      if (incident.maintenance_type === 'corrective') {
+    hardwareIncidents
+      .filter(incident => incident.maintenance_type === 'corrective')
+      .forEach(incident => {
         const server = incident.partition || 'Non spécifié';
         serverMap[server] = (serverMap[server] || 0) + 1;
-      }
-    });
+      });
 
     return Object.entries(serverMap)
       .map(([server, count]) => ({ server, count }))
       .sort((a, b) => b.count - a.count)
-      .slice(0, 15); // Top 15 servers
+      .slice(0, 15);
   }, [hardwareIncidents]);
 
   return (
@@ -443,20 +436,6 @@ export default function AdminDashboard() {
             icon={Cpu}
             variant="accent"
             trend={!isCurrentYear ? "Uniquement maintenance corrective" : undefined}
-          />
-          <StatCard
-            title="Temps d'arrêt total"
-            value={stats?.hardware_downtime_minutes && stats.hardware_downtime_minutes > 0 ? stats.hardware_downtime_minutes : 0}
-            icon={Clock}
-            variant="warning"
-            trend={stats?.hardware_downtime_minutes && stats.hardware_downtime_minutes > 0 ? `${Math.floor(stats.hardware_downtime_minutes / 60)}h ${stats.hardware_downtime_minutes % 60}min` : "Aucune donnée"}
-          />
-          <StatCard
-            title="Durée moyenne d'arrêt"
-            value={stats?.hardware_avg_downtime_minutes && stats.hardware_avg_downtime_minutes > 0 ? stats.hardware_avg_downtime_minutes : 0}
-            icon={TrendingUp}
-            variant="accent"
-            trend={stats?.hardware_avg_downtime_minutes && stats.hardware_avg_downtime_minutes > 0 ? `${Math.floor(stats.hardware_avg_downtime_minutes / 60)}h ${stats.hardware_avg_downtime_minutes % 60}min` : "N/A"}
           />
           <StatCard
             title="Incidents avec arrêt"
@@ -529,7 +508,7 @@ export default function AdminDashboard() {
             <div className="flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-2">
                 <Label htmlFor="year-select" className="text-sm">Année:</Label>
-                <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+                <Select value={selectedYear.toString()} onValueChange={handleYearChange}>
                   <SelectTrigger id="year-select" className="w-[150px]">
                     <SelectValue placeholder="Année..." />
                   </SelectTrigger>
@@ -543,18 +522,42 @@ export default function AdminDashboard() {
                 </Select>
               </div>
               <div className="flex items-center gap-2">
-                <Label htmlFor="period-select" className="text-sm">Grouper par:</Label>
-                <Select value={periodType} onValueChange={(value) => setPeriodType(value as PeriodType)}>
-                  <SelectTrigger id="period-select" className="w-[180px]">
-                    <SelectValue placeholder="Période..." />
+                <Label htmlFor="month-select" className="text-sm">Mois:</Label>
+                <Select value={selectedMonth?.toString() || "all"} onValueChange={handleMonthChange}>
+                  <SelectTrigger id="month-select" className="w-[150px]">
+                    <SelectValue placeholder="Tous les mois..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="week">Semaine</SelectItem>
-                    <SelectItem value="month">Mois</SelectItem>
-                    <SelectItem value="year">Année</SelectItem>
+                    <SelectItem value="all">Tous les mois</SelectItem>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map(month => {
+                      const date = new Date(selectedYear, month - 1, 1);
+                      return (
+                        <SelectItem key={month} value={month.toString()}>
+                          {date.toLocaleDateString('fr-FR', { month: 'long' })}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
+              {selectedMonth !== null && (
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="week-select" className="text-sm">Semaine:</Label>
+                  <Select value={selectedWeek?.toString() || "all"} onValueChange={handleWeekChange}>
+                    <SelectTrigger id="week-select" className="w-[150px]">
+                      <SelectValue placeholder="Toutes les semaines..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Toutes les semaines</SelectItem>
+                      {availableWeeks.map(week => (
+                        <SelectItem key={week} value={week.toString()}>
+                          Semaine {week}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </div>
           {!isCurrentYear && (
@@ -565,57 +568,156 @@ export default function AdminDashboard() {
         </CardHeader>
       </Card>
 
-      {/* Hardware Incidents by Period */}
+      {/* Hardware Incidents by Equipment */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
-            Incidents Matériels par {periodType === 'week' ? 'semaine' : periodType === 'month' ? 'mois' : 'année'}
+            Incidents Matériels par équipement{formatPeriodTitle()}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={incidentsByPeriod}>
+          <ResponsiveContainer width="100%" height={Math.max(450, hardwareIncidentsByEquipmentForPeriod.length * 40)}>
+            <BarChart data={hardwareIncidentsByEquipmentForPeriod} layout="vertical" margin={{ left: 10, right: 20, top: 20, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="period" 
-                tick={{ fontSize: 12 }}
-                angle={-45}
-                textAnchor="end"
-                height={80}
+              <XAxis type="number" />
+              <YAxis 
+                dataKey="name" 
+                type="category" 
+                width={300}
+                tick={{ fontSize: 11 }}
+                interval={0}
               />
-              <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="hardware" fill="#3b82f6" name="Matériel" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="value" fill="#3b82f6" name="Nombre d'incidents" radius={[0, 8, 8, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
-      {/* Software Incidents by Period */}
+      {/* Downtime by Equipment */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Incidents Logiciels par {periodType === 'week' ? 'semaine' : periodType === 'month' ? 'mois' : 'année'}
+            <Clock className="h-5 w-5" />
+            Répartition du temps d'arrêt par équipement{formatPeriodTitle()}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={incidentsByPeriod}>
+          {downtimeByEquipment.length > 0 ? (
+            <ResponsiveContainer width="100%" height={Math.max(450, downtimeByEquipment.length * 40)}>
+              <BarChart data={downtimeByEquipment} layout="vertical" margin={{ left: 10, right: 20, top: 20, bottom: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  type="number" 
+                  label={{ value: 'Minutes', position: 'insideBottom', offset: -5 }}
+                />
+                <YAxis 
+                  dataKey="name" 
+                  type="category" 
+                  width={300}
+                  tick={{ fontSize: 11 }}
+                  interval={0}
+                />
+                <Tooltip 
+                  formatter={(value: number) => {
+                    const hours = Math.floor(value / 60);
+                    const mins = value % 60;
+                    return `${hours}h ${mins}min`;
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="minutes" fill="#ef4444" name="Temps d'arrêt" radius={[0, 8, 8, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-center text-muted-foreground py-8">
+              Aucun temps d'arrêt enregistré pour la période sélectionnée
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Software Incidents by Server */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Incidents Logiciels par serveur{formatPeriodTitle()}
+            </CardTitle>
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="year-select-software" className="text-sm">Année:</Label>
+                <Select value={selectedYear.toString()} onValueChange={handleYearChange}>
+                  <SelectTrigger id="year-select-software" className="w-[150px]">
+                    <SelectValue placeholder="Année..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableYears.map(year => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year} {year === currentYear ? '(actuelle)' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="month-select-software" className="text-sm">Mois:</Label>
+                <Select value={selectedMonth?.toString() || "all"} onValueChange={handleMonthChange}>
+                  <SelectTrigger id="month-select-software" className="w-[150px]">
+                    <SelectValue placeholder="Tous les mois..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les mois</SelectItem>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map(month => {
+                      const date = new Date(selectedYear, month - 1, 1);
+                      return (
+                        <SelectItem key={month} value={month.toString()}>
+                          {date.toLocaleDateString('fr-FR', { month: 'long' })}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedMonth !== null && (
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="week-select-software" className="text-sm">Semaine:</Label>
+                  <Select value={selectedWeek?.toString() || "all"} onValueChange={handleWeekChange}>
+                    <SelectTrigger id="week-select-software" className="w-[150px]">
+                      <SelectValue placeholder="Toutes les semaines..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Toutes les semaines</SelectItem>
+                      {availableWeeks.map(week => (
+                        <SelectItem key={week} value={week.toString()}>
+                          Semaine {week}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={Math.max(450, softwareIncidentsByServerForPeriod.length * 40)}>
+            <BarChart data={softwareIncidentsByServerForPeriod} layout="vertical" margin={{ left: 10, right: 20, top: 20, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="period" 
-                tick={{ fontSize: 12 }}
-                angle={-45}
-                textAnchor="end"
-                height={80}
+              <XAxis type="number" />
+              <YAxis 
+                dataKey="name" 
+                type="category" 
+                width={300}
+                tick={{ fontSize: 11 }}
+                interval={0}
               />
-              <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="software" fill="#f59e0b" name="Logiciel" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="value" fill="#f59e0b" name="Nombre d'incidents" radius={[0, 8, 8, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
@@ -663,109 +765,15 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          {/* Monthly Trend - Hardware */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Tendance mensuelle - Matériel (6 derniers mois)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={monthlyTrend}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="month" 
-                    tick={{ fontSize: 12 }}
-                  />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="hardware" fill="#3b82f6" name="Matériel" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
         </div>
       </div>
-
-      {/* Software Charts Section */}
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <HardDrive className="h-6 w-6" />
-          Graphiques - Logiciel
-        </h2>
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Software Incidents Over Time - Line Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                Évolution des incidents logiciels (30 derniers jours)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={incidentsByDay}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="day" 
-                    tick={{ fontSize: 12 }}
-                    angle={-45}
-                    textAnchor="end"
-                    height={60}
-                  />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="software" 
-                    stroke="#f59e0b" 
-                    strokeWidth={2}
-                    name="Logiciel"
-                    dot={{ r: 4 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* Monthly Trend - Software */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Tendance mensuelle - Logiciel (6 derniers mois)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={monthlyTrend}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="month" 
-                    tick={{ fontSize: 12 }}
-                  />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="software" fill="#f59e0b" name="Logiciel" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
 
       {/* Software Incidents by Anomaly Type */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <HardDrive className="h-5 w-5" />
-            Incidents logiciels par type d'anomalie ({periodType === 'week' ? 'par semaine' : periodType === 'month' ? 'par mois' : 'par année'})
+            Incidents logiciels par type d'anomalie ({effectivePeriodType === 'week' ? 'par semaine' : effectivePeriodType === 'month' ? 'par mois' : 'par année'})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -790,7 +798,7 @@ export default function AdminDashboard() {
                       key={anomalyType}
                       dataKey={anomalyType} 
                       stackId="a"
-                      fill={COLORS[index % COLORS.length]}
+                      fill={CHART_COLORS[index % CHART_COLORS.length]}
                       name={anomalyType}
                     />
                   ))}
@@ -817,92 +825,6 @@ export default function AdminDashboard() {
           )}
         </CardContent>
       </Card>
-
-      {/* Hardware Additional Charts */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Top Hardware Servers - Bar Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Server className="h-5 w-5" />
-              Top 10 Serveurs - Incidents Matériels
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={topHardwareServersData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="name" 
-                  tick={{ fontSize: 12 }}
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
-                />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="value" fill="#3b82f6" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Incidents by Equipment */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Cpu className="h-5 w-5" />
-              Incidents par équipement
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={incidentsByEquipment} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis 
-                  dataKey="name" 
-                  type="category" 
-                  width={200}
-                  tick={{ fontSize: 11 }}
-                />
-                <Tooltip />
-                <Bar dataKey="value" fill="#3b82f6" radius={[0, 8, 8, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Software Additional Charts */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Top Software Servers - Bar Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Server className="h-5 w-5" />
-              Top 10 Serveurs - Incidents Logiciels
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={topSoftwareServersData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="name" 
-                  tick={{ fontSize: 12 }}
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
-                />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="value" fill="#f59e0b" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Comparison Charts for Corrective Incidents */}
       <div className="space-y-6">
@@ -1022,146 +944,6 @@ export default function AdminDashboard() {
         </CardContent>
       </Card>
 
-      {/* Hardware Incidents */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Cpu className="h-5 w-5" />
-              Incidents Matériels Récents
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="sort-hardware" className="text-sm">Trier par:</Label>
-              <Select value={hardwareSortBy} onValueChange={setHardwareSortBy}>
-                <SelectTrigger id="sort-hardware" className="w-[200px]">
-                  <SelectValue placeholder="Trier..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="date-desc">Date (plus récent)</SelectItem>
-                  <SelectItem value="date-asc">Date (plus ancien)</SelectItem>
-                  <SelectItem value="equipement-asc">Équipement (A-Z)</SelectItem>
-                  <SelectItem value="equipement-desc">Équipement (Z-A)</SelectItem>
-                  <SelectItem value="duree-asc">Durée d'arrêt (croissant)</SelectItem>
-                  <SelectItem value="duree-desc">Durée d'arrêt (décroissant)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {sortedHardwareIncidents.slice(0, 10).map((incident) => (
-              <div
-                key={incident.id}
-                className="flex items-center justify-between rounded-lg border border-border p-4 transition-colors hover:bg-muted/50"
-              >
-                <div className="space-y-1 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">#{incident.id}</span>
-                    <span className="text-sm text-muted-foreground">•</span>
-                    <span className="text-sm font-medium">
-                      {incident.nom_de_equipement || "Équipement non spécifié"}
-                    </span>
-                    {incident.partition && (
-                      <>
-                        <span className="text-sm text-muted-foreground">•</span>
-                        <span className="text-sm text-muted-foreground">
-                          Partition: {incident.partition}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                  <p className="text-sm">{incident.description}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {incident.date} à {incident.time}
-                    {incident.duree_arret && incident.duree_arret > 0 && (
-                      <> • Durée d'arrêt: {Math.floor(incident.duree_arret / 60)}h {incident.duree_arret % 60}min</>
-                    )}
-                    {incident.numero_de_serie && (
-                      <> • S/N: {incident.numero_de_serie}</>
-                    )}
-                  </p>
-                </div>
-              </div>
-            ))}
-            {sortedHardwareIncidents.length === 0 && (
-              <p className="text-center text-muted-foreground py-8">
-                Aucun incident matériel
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Software Incidents */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <HardDrive className="h-5 w-5" />
-              Incidents Logiciels Récents
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="sort-software" className="text-sm">Trier par:</Label>
-              <Select value={softwareSortBy} onValueChange={setSoftwareSortBy}>
-                <SelectTrigger id="sort-software" className="w-[200px]">
-                  <SelectValue placeholder="Trier..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="date-desc">Date (plus récent)</SelectItem>
-                  <SelectItem value="date-asc">Date (plus ancien)</SelectItem>
-                  <SelectItem value="serveur-asc">Serveur (A-Z)</SelectItem>
-                  <SelectItem value="serveur-desc">Serveur (Z-A)</SelectItem>
-                  <SelectItem value="sujet-asc">Sujet (A-Z)</SelectItem>
-                  <SelectItem value="sujet-desc">Sujet (Z-A)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {sortedSoftwareIncidents.slice(0, 10).map((incident) => (
-              <div
-                key={incident.id}
-                className="flex items-center justify-between rounded-lg border border-border p-4 transition-colors hover:bg-muted/50"
-              >
-                <div className="space-y-1 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">#{incident.id}</span>
-                    <span className="text-sm text-muted-foreground">•</span>
-                    {incident.server && (
-                      <>
-                        <span className="text-sm font-medium">
-                          Serveur: {incident.server}
-                        </span>
-                        <span className="text-sm text-muted-foreground">•</span>
-                      </>
-                    )}
-                    {incident.sujet && (
-                      <span className="text-sm font-medium">
-                        {incident.sujet}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm">{incident.description}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {incident.date} à {incident.time}
-                    {incident.type_d_anomalie && (
-                      <> • Type d'anomalie: {incident.type_d_anomalie}</>
-                    )}
-                  </p>
-                </div>
-              </div>
-            ))}
-            {sortedSoftwareIncidents.length === 0 && (
-              <p className="text-center text-muted-foreground py-8">
-                Aucun incident logiciel
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

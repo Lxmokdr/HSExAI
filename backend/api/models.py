@@ -99,14 +99,18 @@ class SoftwareIncident(models.Model):
     """Software incident model"""
     date = models.DateField()
     time = models.TimeField()
-    simulateur = models.BooleanField(default=False)
-    salle_operationnelle = models.BooleanField(default=False)
     server = models.CharField(max_length=255, null=True, blank=True)
     partition = models.CharField(max_length=255, null=True, blank=True)
-    position_STA = models.CharField(max_length=255, null=True, blank=True)
+    position = models.CharField(max_length=255, null=True, blank=True)
     type_d_anomalie = models.CharField(max_length=255, null=True, blank=True)
-    indicatif = models.CharField(max_length=255, null=True, blank=True)
-    nom_radar = models.CharField(max_length=255, null=True, blank=True)
+    call_sign = models.CharField(max_length=255, null=True, blank=True)
+    nom_radar = models.CharField(max_length=10, null=True, blank=True, choices=[
+        ('OS', 'OS'),
+        ('MG', 'MG'),
+        ('SD', 'SD'),
+        ('LO', 'LO'),
+        ('BY', 'BY'),
+    ])
     FL = models.CharField(max_length=255, null=True, blank=True)
     longitude = models.CharField(max_length=255, null=True, blank=True)
     latitude = models.CharField(max_length=255, null=True, blank=True)

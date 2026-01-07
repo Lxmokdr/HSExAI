@@ -1,6 +1,9 @@
 // React imports
 import { useState, useMemo } from "react";
 
+// React Router imports
+import { useNavigate } from "react-router-dom";
+
 // Third-party imports
 import { Search, Cpu } from "lucide-react";
 
@@ -16,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function HistoryHardware() {
+  const navigate = useNavigate();
   const { hardwareIncidents } = useIncidents();
   const [filters, setFilters] = useState({
     search: "",
@@ -75,7 +79,10 @@ export default function HistoryHardware() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <IncidentTable incidents={filteredIncidents} />
+          <IncidentTable
+            incidents={filteredIncidents}
+            onEdit={(id) => navigate(`/incident/edit/${id}`)}
+          />
         </CardContent>
       </Card>
     </div>

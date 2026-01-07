@@ -31,7 +31,7 @@ class HardwareIncidentAdmin(admin.ModelAdmin):
 @admin.register(SoftwareIncident)
 class SoftwareIncidentAdmin(admin.ModelAdmin):
     list_display = ['id', 'sujet', 'date', 'time', 'created_at']
-    list_filter = ['date', 'created_at', 'simulateur', 'salle_operationnelle']
+    list_filter = ['date', 'created_at', 'nom_radar']
     search_fields = ['sujet', 'description', 'commentaires']
 
 

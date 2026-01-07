@@ -1,12 +1,17 @@
 // React imports
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
+// React Router imports
+import { useNavigate } from "react-router-dom";
+
 // Third-party imports
-import { History } from "lucide-react";
+import { History, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { ConfirmationDialog } from "@/components/ConfirmationDialog";
 
 // Local service imports
 import { apiClient, Equipment, Incident } from "@/services/api";
+import { useIncidents } from "@/hooks/useIncidents";
 
 // Local component imports
 import { IncidentTable } from "@/components/IncidentTable";
@@ -84,7 +89,7 @@ const EQUIPMENT_NAMES = [
 ];
 
 interface IncidentFormProps {
-  onSubmit: (data: IncidentFormData) => void;
+  onSubmit: (data: IncidentFormData) => void | Promise<void> | Promise<any>;
   type: "hardware" | "software";
   title?: string;
   initialData?: Partial<IncidentFormData>;
@@ -106,12 +111,10 @@ export interface IncidentFormData {
   duree_arret?: number;
   maintenance_type?: 'preventive' | 'corrective';
   // Software fields
-  simulateur?: boolean;
-  salle_operationnelle?: boolean;
   server?: string;
-  position_STA?: string;
+  position?: string;
   type_d_anomalie?: string;
-  indicatif?: string;
+  call_sign?: string;
   nom_radar?: string;
   FL?: string;
   longitude?: string;
@@ -122,7 +125,16 @@ export interface IncidentFormData {
 }
 
 export function IncidentForm({ onSubmit, type, title, initialData }: IncidentFormProps) {
+  const navigate = useNavigate();
+  const { addReport } = useIncidents();
   const [equipmentLoading, setEquipmentLoading] = useState(false);
+  const [reportFormData, setReportFormData] = useState({
+    anomaly: "",
+    analysis: "",
+    conclusion: "",
+  });
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [lastCreatedIncidentId, setLastCreatedIncidentId] = useState<number | null>(null);
   const [availableSerialNumbers, setAvailableSerialNumbers] = useState<string[]>([]);
   const [availableEquipment, setAvailableEquipment] = useState<Equipment[]>([]);
   const [serialNumberSearchQuery, setSerialNumberSearchQuery] = useState<string>("");
@@ -167,12 +179,10 @@ export function IncidentForm({ onSubmit, type, title, initialData }: IncidentFor
       recommendation: initialData?.recommendation || "",
       duree_arret: initialData?.duree_arret || undefined,
       maintenance_type: initialData?.maintenance_type || undefined,
-      simulateur: initialData?.simulateur || false,
-      salle_operationnelle: initialData?.salle_operationnelle || false,
       server: initialData?.server || "",
-      position_STA: initialData?.position_STA || "",
+      position: initialData?.position || "",
       type_d_anomalie: initialData?.type_d_anomalie || "",
-      indicatif: initialData?.indicatif || "",
+      call_sign: initialData?.call_sign || "",
       nom_radar: initialData?.nom_radar || "",
     FL: initialData?.FL || "",
     longitude: initialData?.longitude || "",
@@ -194,7 +204,17 @@ export function IncidentForm({ onSubmit, type, title, initialData }: IncidentFor
     }
   }, [initialData?.date, initialData?.time, initialData?.description, initialData?.numero_de_serie, initialData?.nom_de_equipement, initialData?.partition]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Auto-fill report anomaly from incident description when description changes (for software incidents)
+  useEffect(() => {
+    if (type === "software" && !initialData && formData.description && !reportFormData.anomaly) {
+      setReportFormData(prev => ({
+        ...prev,
+        anomaly: formData.description,
+      }));
+    }
+  }, [formData.description, type, initialData]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Clear any pending API calls that might override manual changes
     if (fetchTimeoutRef.current) {
@@ -203,7 +223,12 @@ export function IncidentForm({ onSubmit, type, title, initialData }: IncidentFor
     }
     // Submit the current form data (which includes manually selected equipment name)
     // Use a copy to ensure we're submitting the exact current state
-    onSubmit({ ...formData });
+    const result = await onSubmit({ ...formData });
+    
+    // Store the created incident ID for report submission (for software incidents)
+    if (type === "software" && !initialData && result && typeof result === 'object' && result !== null && 'id' in result) {
+      setLastCreatedIncidentId((result as any).id);
+    }
     // Only reset form if not editing (no initialData)
     if (!initialData) {
       const now = new Date();
@@ -228,12 +253,10 @@ export function IncidentForm({ onSubmit, type, title, initialData }: IncidentFor
         recommendation: "",
         duree_arret: undefined,
         maintenance_type: undefined,
-        simulateur: false,
-        salle_operationnelle: false,
         server: "",
-        position_STA: "",
+        position: "",
         type_d_anomalie: "",
-        indicatif: "",
+        call_sign: "",
         nom_radar: "",
       FL: "",
       longitude: "",
@@ -242,6 +265,12 @@ export function IncidentForm({ onSubmit, type, title, initialData }: IncidentFor
       sujet: "",
       commentaires: "",
       });
+      
+      // Reset report form and last created incident ID
+      if (type === "software") {
+        setReportFormData({ anomaly: "", analysis: "", conclusion: "" });
+        setLastCreatedIncidentId(null);
+      }
     }
   };
 
@@ -809,45 +838,6 @@ export function IncidentForm({ onSubmit, type, title, initialData }: IncidentFor
 
           {type === "software" && (
             <>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="simulateur">Simulateur</Label>
-                  <Select
-                    value={formData.simulateur === true ? "yes" : formData.simulateur === false ? "no" : ""}
-                    onValueChange={(value) => {
-                      const boolValue = value === "yes";
-                      setFormData({ ...formData, simulateur: boolValue });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="yes">Oui</SelectItem>
-                      <SelectItem value="no">Non</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="salle_operationnelle">Salle opérationnelle</Label>
-                  <Select
-                    value={formData.salle_operationnelle === true ? "yes" : formData.salle_operationnelle === false ? "no" : ""}
-                    onValueChange={(value) => {
-                      const boolValue = value === "yes";
-                      setFormData({ ...formData, salle_operationnelle: boolValue });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="yes">Oui</SelectItem>
-                      <SelectItem value="no">Non</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="server">Server</Label>
                 <Select
@@ -887,12 +877,12 @@ export function IncidentForm({ onSubmit, type, title, initialData }: IncidentFor
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="position_STA">Position STA</Label>
+                <Label htmlFor="position">Position</Label>
                 <Input
-                  id="position_STA"
-                  value={formData.position_STA || ""}
+                  id="position"
+                  value={formData.position || ""}
                   onChange={(e) =>
-                    setFormData({ ...formData, position_STA: e.target.value })
+                    setFormData({ ...formData, position: e.target.value })
                   }
                 />
               </div>
@@ -909,7 +899,7 @@ export function IncidentForm({ onSubmit, type, title, initialData }: IncidentFor
                     <SelectValue placeholder="Sélectionner" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Systeme">Système</SelectItem>
+                    <SelectItem value="systematique">Systématique</SelectItem>
                     <SelectItem value="aleatoire">Aléatoire</SelectItem>
                   </SelectContent>
                 </Select>
@@ -917,25 +907,32 @@ export function IncidentForm({ onSubmit, type, title, initialData }: IncidentFor
 
               <div className="space-y-2">
                 <Label htmlFor="nom_radar">Nom radar</Label>
-                <Input
-                  id="nom_radar"
+                <Select
                   value={formData.nom_radar || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nom_radar: e.target.value })
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, nom_radar: value })
                   }
-                  placeholder="Nom du radar"
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un radar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="OS">OS</SelectItem>
+                    <SelectItem value="MG">MG</SelectItem>
+                    <SelectItem value="SD">SD</SelectItem>
+                    <SelectItem value="LO">LO</SelectItem>
+                    <SelectItem value="BY">BY</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
-          
-              
                 <div className="space-y-2">
-                  <Label htmlFor="indicatif">Indicatif</Label>
+                <Label htmlFor="call_sign">Call Sign</Label>
                   <Input
-                    id="indicatif"
-                    value={formData.indicatif || ""}
+                  id="call_sign"
+                  value={formData.call_sign || ""}
                     onChange={(e) =>
-                      setFormData({ ...formData, indicatif: e.target.value })
+                    setFormData({ ...formData, call_sign: e.target.value })
                     }
                   />
                 </div>
@@ -1025,9 +1022,108 @@ export function IncidentForm({ onSubmit, type, title, initialData }: IncidentFor
             </>
           )}
 
-          <Button type="submit" className="w-full">
-            Enregistrer l'incident
+          <div className="space-y-3">
+            <Button type="submit" className="w-full" disabled={isSubmittingReport}>
+              {isSubmittingReport ? "Enregistrement..." : "Enregistrer l'incident"}
           </Button>
+          </div>
+
+          {/* Report Form Section - always visible for software incidents */}
+          {type === "software" && !initialData && (
+            <div className="border-t pt-6 mt-6 space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Rapport d'analyse (optionnel)
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Remplissez le rapport ci-dessous. Enregistrez d'abord l'incident, puis cliquez sur "Enregistrer le rapport".
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="report-anomaly">Anomalie observée</Label>
+                  <Textarea
+                    id="report-anomaly"
+                    placeholder="Décrivez l'anomalie observée (sera pré-rempli depuis la description de l'incident si vide)..."
+                    value={reportFormData.anomaly}
+                    onChange={(e) =>
+                      setReportFormData({ ...reportFormData, anomaly: e.target.value })
+                    }
+                    rows={4}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Si vide, sera automatiquement rempli avec la description de l'incident lors de l'enregistrement.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="report-analysis">Analyse</Label>
+                  <Textarea
+                    id="report-analysis"
+                    placeholder="Analyse technique de l'incident..."
+                    value={reportFormData.analysis}
+                    onChange={(e) =>
+                      setReportFormData({ ...reportFormData, analysis: e.target.value })
+                    }
+                    rows={4}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="report-conclusion">Conclusion</Label>
+                  <Textarea
+                    id="report-conclusion"
+                    placeholder="Conclusion et recommandations..."
+                    value={reportFormData.conclusion}
+                    onChange={(e) =>
+                      setReportFormData({ ...reportFormData, conclusion: e.target.value })
+                    }
+                    rows={4}
+                  />
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    if (!lastCreatedIncidentId) {
+                      toast.error("Veuillez d'abord enregistrer l'incident");
+                      return;
+                    }
+
+                    const anomalyToSubmit = reportFormData.anomaly.trim() || formData.description || "";
+                    
+                    if (!anomalyToSubmit || !reportFormData.analysis.trim() || !reportFormData.conclusion.trim()) {
+                      toast.error("Veuillez remplir tous les champs du rapport (Anomalie, Analyse, Conclusion)");
+                      return;
+                    }
+
+                    try {
+                      setIsSubmittingReport(true);
+                      await addReport(lastCreatedIncidentId, {
+                        anomaly: anomalyToSubmit,
+                        analysis: reportFormData.analysis,
+                        conclusion: reportFormData.conclusion,
+                      });
+                      toast.success("Rapport ajouté avec succès");
+                      // Reset report form
+                      setReportFormData({ anomaly: "", analysis: "", conclusion: "" });
+                      setLastCreatedIncidentId(null);
+                    } catch (error: any) {
+                      toast.error(error.message || "Erreur lors de l'ajout du rapport");
+                    } finally {
+                      setIsSubmittingReport(false);
+                    }
+                  }}
+                  disabled={isSubmittingReport || !lastCreatedIncidentId}
+                  className="w-full"
+                >
+                  {isSubmittingReport ? "Enregistrement du rapport..." : "Enregistrer le rapport"}
+                </Button>
+              </div>
+            </div>
+          )}
         </form>
       </CardContent>
 

@@ -2,7 +2,7 @@
 import { NavLink } from "react-router-dom";
 
 // Third-party imports
-import { Home, Cpu, HardDrive, FileText, History, Server } from "lucide-react";
+import { Home, Cpu, HardDrive, FileText, History, Server, ClipboardList } from "lucide-react";
 
 // Local hook imports
 import { useAuth } from "@/hooks/useAuth";
@@ -39,14 +39,22 @@ export function Sidebar() {
     if (permissions.canAccessHardwareIncidents) {
       navigationItems.push({ name: "Incidents Hardware", href: "/hardware", icon: Cpu });
     }
-    if (permissions.canAccessSoftwareIncidents) {
+    // Show Software Incidents if user can access OR modify (for service_maintenance)
+    if (permissions.canAccessSoftwareIncidents || permissions.canModifySoftwareIncidents) {
       navigationItems.push({ name: "Incidents Software", href: "/software", icon: HardDrive });
     }
     if (permissions.canAccessEquipment) {
       navigationItems.push({ name: "Équipements", href: "/equipment", icon: Server });
     }
-    // Single history tab for other roles
-    navigationItems.push({ name: "Historique", href: "/history", icon: History });
+    // Single history tab for other roles (only if they have access)
+    if (permissions.canAccessHardwareIncidents || permissions.canAccessSoftwareIncidents) {
+      navigationItems.push({ name: "Historique", href: "/history", icon: History });
+    }
+  }
+
+  // Reports - for users who can access reports
+  if (permissions.canAccessReports) {
+    navigationItems.push({ name: "Rapports", href: "/reports", icon: ClipboardList });
   }
 
   // User management - only for superadmin

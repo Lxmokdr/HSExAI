@@ -296,10 +296,10 @@ class IncidentViewSet(viewsets.ModelViewSet):
         
         # Superadmin can see everything
         if user_role == 'superadmin':
-        if incident_type == 'hardware':
-            return HardwareIncident.objects.select_related().all()
-        elif incident_type == 'software':
-            return SoftwareIncident.objects.all()
+            if incident_type == 'hardware':
+                return HardwareIncident.objects.select_related().all()
+            elif incident_type == 'software':
+                return SoftwareIncident.objects.all()
             return None
         
         # Chef de département can see both types (read-only)
@@ -322,7 +322,7 @@ class IncidentViewSet(viewsets.ModelViewSet):
                 return SoftwareIncident.objects.all()
             return SoftwareIncident.objects.none()
         
-            return None
+        return None
     
     def list(self, request):
         """List incidents with optional type filter and role-based filtering"""
@@ -331,20 +331,20 @@ class IncidentViewSet(viewsets.ModelViewSet):
         
         # Superadmin can see everything
         if user_role == 'superadmin':
-        if incident_type == 'hardware':
-            incidents = HardwareIncident.objects.all()
-            serializer = HardwareIncidentSerializer(incidents, many=True)
-            return Response({'results': serializer.data, 'count': len(serializer.data)})
-        elif incident_type == 'software':
-            incidents = SoftwareIncident.objects.all()
-            serializer = SoftwareIncidentSerializer(incidents, many=True)
-            return Response({'results': serializer.data, 'count': len(serializer.data)})
-        else:
-            # Get both types
-            hardware_incidents = HardwareIncident.objects.all()
-            software_incidents = SoftwareIncident.objects.all()
-            hardware_data = HardwareIncidentSerializer(hardware_incidents, many=True).data
-            software_data = SoftwareIncidentSerializer(software_incidents, many=True).data
+            if incident_type == 'hardware':
+                incidents = HardwareIncident.objects.all()
+                serializer = HardwareIncidentSerializer(incidents, many=True)
+                return Response({'results': serializer.data, 'count': len(serializer.data)})
+            elif incident_type == 'software':
+                incidents = SoftwareIncident.objects.all()
+                serializer = SoftwareIncidentSerializer(incidents, many=True)
+                return Response({'results': serializer.data, 'count': len(serializer.data)})
+            else:
+                # Get both types
+                hardware_incidents = HardwareIncident.objects.all()
+                software_incidents = SoftwareIncident.objects.all()
+                hardware_data = HardwareIncidentSerializer(hardware_incidents, many=True).data
+                software_data = SoftwareIncidentSerializer(software_incidents, many=True).data
                 all_incidents = hardware_data + software_data
                 return Response({'results': all_incidents, 'count': len(all_incidents)})
         
@@ -754,7 +754,7 @@ class IncidentViewSet(viewsets.ModelViewSet):
         # Filter based on role
         if user_role == 'service_maintenance':
             # Only hardware stats
-        hardware_count = HardwareIncident.objects.count()
+            hardware_count = HardwareIncident.objects.count()
             hardware_downtime = HardwareIncident.objects.filter(
                 duree_arret__isnull=False,
                 duree_arret__gt=0
@@ -792,7 +792,7 @@ class IncidentViewSet(viewsets.ModelViewSet):
         
         elif user_role == 'service_integration':
             # Only software stats
-        software_count = SoftwareIncident.objects.count()
+            software_count = SoftwareIncident.objects.count()
             seven_days_ago = timezone.now().date() - timedelta(days=7)
             thirty_days_ago = timezone.now().date() - timedelta(days=30)
             software_last_7 = SoftwareIncident.objects.filter(date__gte=seven_days_ago).count()
@@ -866,7 +866,7 @@ class IncidentViewSet(viewsets.ModelViewSet):
         
         if user_role == 'service_maintenance':
             # Only hardware incidents
-        hardware_recent = HardwareIncident.objects.all()[:5]
+            hardware_recent = HardwareIncident.objects.all()[:5]
             hardware_data = HardwareIncidentSerializer(hardware_recent, many=True).data
             return Response(hardware_data)
         

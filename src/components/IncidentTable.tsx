@@ -37,11 +37,9 @@ export interface Incident {
   recommendation?: string;
   maintenance_type?: 'preventive' | 'corrective';
   // Software fields
-  simulateur?: boolean;
-  salle_operationnelle?: boolean;
-  position_STA?: string;
+  position?: string;
   type_d_anomalie?: string;
-  indicatif?: string;
+  call_sign?: string;
   nom_radar?: string;
   FL?: string;
   longitude?: string;
@@ -128,113 +126,135 @@ export function IncidentTable({
           .replace(/'/g, '&#039;');
       };
       
+      const partition = incident.partition || 'Non spécifiée';
+      const incidentDate = incident.date || report.date;
+      
       const htmlContent = `
         <!DOCTYPE html>
         <html>
           <head>
-            <title>Rapport d'Incident Logiciel #${incident.id}</title>
+            <meta charset="UTF-8">
+            <title>Fiche incident software - Rapport</title>
             <style>
-              body { 
-                font-family: Arial, sans-serif; 
-                padding: 20px; 
-                max-width: 1200px; 
-                margin: 0 auto;
-                background: #fff;
+              @media print {
+                @page {
+                  size: A4 landscape;
+                  margin: 0;
+                  /* Remove browser default headers/footers */
+                  marks: none;
+                }
+                body {
+                  padding: 2cm;
+                }
+              }
+              body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                margin: 0;
+                padding: 20px;
               }
               .header {
                 text-align: center;
                 margin-bottom: 30px;
-                border-bottom: 3px solid #007bff;
-                padding-bottom: 20px;
+                position: relative;
               }
-              .header h1 {
-                color: #007bff;
-                margin: 0;
-                font-size: 28px;
+              .header-code {
+                position: absolute;
+                top: 0;
+                left: 0;
+                font-weight: bold;
+                font-size: 14px;
+                color: #333;
               }
-              .header p {
-                color: #666;
-                margin: 5px 0;
+              .title {
+                font-size: 18px;
+                font-weight: bold;
+                text-transform: uppercase;
               }
-              table {
+              .entete {
+                text-align: justify;
+                font-size: 14px;
+                margin-bottom: 25px;
+                line-height: 1.8;
+              }
+              .report-table {
                 width: 100%;
                 border-collapse: collapse;
-                margin: 20px 0;
-                background: white;
-                table-layout: fixed;
+                margin-top: 20px;
               }
-              th {
-                background-color: #007bff;
+              .report-table th {
+                background-color: #333;
                 color: white;
                 padding: 12px;
-                text-align: left;
+                text-align: center;
                 font-weight: bold;
-                border: 1px solid #0056b3;
+                font-size: 13px;
+                border: 1px solid #000;
               }
-              td {
-                padding: 12px;
-                border: 1px solid #ddd;
+              .report-table td {
+                padding: 10px;
+                border: 1px solid #000;
                 vertical-align: top;
-                word-wrap: break-word;
-                overflow-wrap: break-word;
+                font-size: 12px;
               }
-              .label {
-                font-weight: bold;
-                color: #333;
-                width: 35%;
-                background-color: #f8f9fa;
+              .report-table td.anomalie {
+                width: 30%;
               }
-              .value {
-                color: #555;
-                width: 65%;
-                word-wrap: break-word;
+              .report-table td.date {
+                width: 15%;
+                text-align: center;
               }
-              .description-field {
+              .report-table td.analyse {
+                width: 27.5%;
+              }
+              .report-table td.conclusion {
+                width: 27.5%;
+              }
+              .report-table td.content {
                 white-space: pre-wrap;
-                line-height: 1.6;
+                word-wrap: break-word;
               }
               @media print {
-                body { padding: 10px; margin: 0; }
-                .header { page-break-after: avoid; margin-bottom: 20px; }
-                table { page-break-inside: avoid; width: 100% !important; border-collapse: collapse !important; table-layout: fixed !important; }
-                td, th { padding: 8px !important; border: 1px solid #000 !important; page-break-inside: avoid; }
-                .label { width: 35% !important; background-color: #f8f9fa !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                .value { width: 65% !important; }
-                tr { page-break-inside: avoid; }
+                .no-print {
+                  display: none;
+                }
+                body {
+                  print-color-adjust: exact;
+                  -webkit-print-color-adjust: exact;
+                }
               }
             </style>
           </head>
           <body>
             <div class="header">
-              <h1>Rapport d'Incident Logiciel #${incident.id}</h1>
-              <p>Établissement National de la Navigation Aérienne (ENNA)</p>
-              <p>Document généré le ${new Date().toLocaleString('fr-FR')}</p>
+              <div class="header-code">DE/DS/SID</div>
+              <div class="title">
+                Fiche incident software
+              </div>
             </div>
-            
-            <table>
-              <tr>
-                <th colspan="2" style="text-align: center;">DÉTAILS DU RAPPORT</th>
-              </tr>
-              <tr>
-                <td class="label">Date du rapport</td>
-                <td class="value">${escapeHtml(report.date)}</td>
-              </tr>
-              <tr>
-                <td class="label">Heure du rapport</td>
-                <td class="value">${escapeHtml(report.time)}</td>
-              </tr>
-              <tr>
-                <td class="label">Anomalie</td>
-                <td class="value">${escapeHtml(report.anomaly)}</td>
-              </tr>
-              <tr>
-                <td class="label">Analyse</td>
-                <td class="value description-field">${escapeHtml(report.analysis)}</td>
-              </tr>
-              <tr>
-                <td class="label">Conclusion</td>
-                <td class="value description-field">${escapeHtml(report.conclusion)}</td>
-              </tr>
+
+            <div class="entete">
+              J'ai l'honneur de vous faire parvenir ci-dessous les résultats des investigations relatives au formulaire de description des anomalies survenues le ${incidentDate}.
+            </div>
+
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Anomalie</th>
+                  <th>Date</th>
+                  <th>Analyse</th>
+                  <th>Conclusion</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="anomalie content">${escapeHtml(report.anomaly)}</td>
+                  <td class="date">${escapeHtml(incident.date)}</td>
+                  <td class="analyse content">${escapeHtml(report.analysis)}</td>
+                  <td class="conclusion content">${escapeHtml(report.conclusion)}</td>
+                </tr>
+              </tbody>
             </table>
             
             <script>
@@ -259,7 +279,8 @@ export function IncidentTable({
     
     // Determine incident type for title and fields
     const isHardware = incident.incident_type === 'hardware';
-    const incidentTypeLabel = isHardware ? 'Matériel' : 'Logiciel';
+    const incidentTitle = isHardware ? 'Fiche intervention technique' : 'Formulaire de description d\'anomalie';
+    const headerCode = isHardware ? 'DE/DS/SMS' : 'DE/DS/SID';
     
     // Try to fetch report for software incidents
     let report: Report | null = null;
@@ -334,7 +355,7 @@ export function IncidentTable({
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Incident ${incidentTypeLabel} #${incident.id}</title>
+          <title>${incidentTitle} #${incident.id}</title>
           <style>
             body { 
               font-family: Arial, sans-serif; 
@@ -349,6 +370,15 @@ export function IncidentTable({
               margin-bottom: 30px;
               border-bottom: 3px solid #007bff;
               padding-bottom: 20px;
+              position: relative;
+            }
+            .header-code {
+              position: absolute;
+              top: 0;
+              left: 0;
+              font-weight: bold;
+              font-size: 14px;
+              color: #333;
             }
             .header h1 {
               color: #007bff;
@@ -489,17 +519,19 @@ export function IncidentTable({
             }
             @media print {
                 @page {
-                  margin: 1cm;
+                  margin: 0;
                   size: A4;
+                  /* Remove browser default headers/footers */
+                  marks: none;
                 }
-                body { 
-                  padding: 0 !important; 
+                body {
+                  padding: 1cm !important; 
                   margin: 0 !important;
                   max-width: 100% !important;
                   width: 100% !important;
                 }
               .actions { display: none !important; }
-                .header { 
+                .header {
                   page-break-after: avoid; 
                   margin-bottom: 20px;
                 }
@@ -585,9 +617,9 @@ export function IncidentTable({
         </head>
         <body>
           <div class="header">
-            <h1>Incident ${incidentTypeLabel}</h1>
+            <div class="header-code">${headerCode}</div>
+            <h1>${incidentTitle}</h1>
             <p>Établissement National de la Navigation Aérienne (ENNA)</p>
-            <p>Document généré le ${new Date().toLocaleString('fr-FR')}</p>
           </div>
           
           <div class="actions">
@@ -639,21 +671,15 @@ export function IncidentTable({
                 { label: 'Recommandation', value: incident.recommendation }
               ])}
             ` : `
-              ${renderFieldGroup('CONFIGURATION', [
-                { label: 'Simulateur', value: incident.simulateur === true ? 'Oui' : incident.simulateur === false ? 'Non' : 'Non spécifié' },
-              ])}
-              ${renderFieldGroup('', [
-                { label: 'Salle opérationnelle', value: incident.salle_operationnelle === true ? 'Oui' : incident.salle_operationnelle === false ? 'Non' : 'Non spécifié' },
-              ])}
               ${renderFieldGroup('', [
                 { label: 'Partition', value: incident.partition },
               ])}
               ${renderFieldGroup('', [
-                { label: 'Position STA', value: incident.position_STA }
+                { label: 'Position', value: incident.position }
               ])}
               ${renderFieldGroup('ANOMALIE', [
                 { label: 'Type d\'anomalie', value: incident.type_d_anomalie },
-                { label: 'Indicatif', value: incident.indicatif },
+                { label: 'Call Sign', value: incident.call_sign },
                 { label: 'Nom radar', value: incident.nom_radar },
                 { label: 'FL (ou altitude)', value: incident.FL }
               ])}
@@ -686,10 +712,10 @@ export function IncidentTable({
                   <th colspan="2" style="text-align: center;">DÉTAILS DU RAPPORT</th>
                 </tr>
                 ${renderFieldGroup('', [
-                  { label: 'Date du rapport', value: report.date },
+                  { label: 'Date', value: incident.date },
                 ])}
                 ${renderFieldGroup('', [
-                  { label: 'Heure du rapport', value: report.time },
+                  { label: 'Heure (GMT)', value: incident.time },
                 ])}
                 ${renderFieldGroup('', [
                   { label: 'Anomalie', value: report.anomaly }
@@ -713,7 +739,7 @@ export function IncidentTable({
               
               const printContent = document.head.outerHTML + 
                 '<body>' + 
-                '<div class="header"><h1>Rapport d\'Incident Logiciel #${incident.id}</h1><p>École Nationale de l\'Aviation Civile (ENNA)</p></div>' +
+                '<div class="header"><div class="header-code">DE/DS/SID</div><h1>Fiche incident software</h1></div>' +
                 reportTable.outerHTML +
                 '</body>';
               
@@ -800,16 +826,32 @@ export function IncidentTable({
                       </Button>
                     )}
                     {incident.incident_type === 'software' && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePrintReport(incident)}
-                        className="flex items-center gap-2"
-                        title={reports.some(r => r.incident === incident.id) ? "Imprimer le rapport" : "Vérifier et imprimer le rapport"}
-                      >
-                        <Printer className="h-4 w-4" />
-                        <span className="hidden sm:inline">Imprimer Rapport</span>
-                      </Button>
+                      <>
+                        {onAddReport && showReportButton && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onAddReport(incident.id)}
+                            className="flex items-center gap-2"
+                            title={reports.some(r => r.incident === incident.id) ? "Modifier le rapport" : "Ajouter un rapport"}
+                          >
+                            <FileText className="h-4 w-4" />
+                            <span className="hidden sm:inline">
+                              {reports.some(r => r.incident === incident.id) ? "Modifier Rapport" : "Ajouter Rapport"}
+                            </span>
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePrintReport(incident)}
+                          className="flex items-center gap-2"
+                          title={reports.some(r => r.incident === incident.id) ? "Imprimer le rapport" : "Vérifier et imprimer le rapport"}
+                        >
+                          <Printer className="h-4 w-4" />
+                          <span className="hidden sm:inline">Imprimer Rapport</span>
+                        </Button>
+                      </>
                     )}
                     {canModifyIncident(incident) && onEdit && (
                     <Button

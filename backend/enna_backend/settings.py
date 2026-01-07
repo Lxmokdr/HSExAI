@@ -195,15 +195,35 @@ elif has_password:
         }
     }
 else:
-    # Local development - Use Unix socket for peer authentication
-    # This works when running as postgres user or via sudo -u postgres
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': DB_NAME,
-            'USER': 'postgres',  # Use postgres user for peer authentication
-            'HOST': '/var/run/postgresql',
-            'PORT': db_port if db_port != '5432' else '5433',  # Try 5433 for PostgreSQL 16
+    # Local development - Use TCP/IP connection with localhost
+    # Try to use password authentication first, fall back to peer auth via socket
+    # If DB_USER is 'postgres' and no password, try socket first
+    if DB_USER == 'postgres' and not DB_PASSWORD:
+        # Try Unix socket for peer authentication (requires running as postgres user)
+        # Use port 5433 if configured, otherwise try 5433 (PostgreSQL 16 default)
+        socket_port = db_port if db_port != '5432' else '5433'
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': DB_NAME,
+                'USER': 'postgres',
+                'HOST': '/var/run/postgresql',
+                'PORT': socket_port,
+            }
+        }
+    else:
+        # Use TCP/IP connection with configured credentials
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': DB_NAME,
+                'USER': DB_USER,
+                'PASSWORD': DB_PASSWORD if DB_PASSWORD else '',
+                'HOST': db_host,
+                'PORT': db_port,
+                'OPTIONS': {
+                    'connect_timeout': 10,
+            },
         }
     }
 

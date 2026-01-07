@@ -200,7 +200,7 @@ class Command(BaseCommand):
         ]
 
         servers = ['radar', 'FDP', 'AGP', 'SNMAP']
-        nom_radar_options = ['Radar Principal', 'Radar Secondaire', 'Radar Tertiaire', 'Radar de Secours', '']
+        nom_radar_options = ['OS', 'MG', 'SD', 'LO', 'BY']
         
         # Generate software incidents for multiple years
         current_year = date.today().year
@@ -233,13 +233,11 @@ class Command(BaseCommand):
                 incident = SoftwareIncident.objects.create(
                     date=incident_date,
                     time=incident_time,
-                    simulateur=random.random() > 0.6,
-                    salle_operationnelle=random.random() > 0.4,
                     server=random.choice(servers) if random.random() > 0.2 else '',
                     partition=random.choice(['CCR', 'ALAP', '']) if random.random() > 0.3 else '',
-                    position_STA=f'STA-{random.randint(1, 10)}' if random.random() > 0.4 else '',
+                    position=f'STA-{random.randint(1, 10)}' if random.random() > 0.4 else '',
                     type_d_anomalie=random.choice(['Systeme', 'aleatoire', '']),
-                    indicatif=f'IND-{random.randint(100, 999)}' if random.random() > 0.5 else '',
+                    call_sign=f'IND-{random.randint(100, 999)}' if random.random() > 0.5 else '',
                     nom_radar=random.choice(nom_radar_options) if random.random() > 0.4 else '',
                     FL=f'FL{random.randint(100, 400)}' if random.random() > 0.5 else '',
                     longitude=f'{random.uniform(-180, 180):.6f}' if random.random() > 0.6 else '',
