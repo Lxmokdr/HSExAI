@@ -145,3 +145,53 @@ class Report(models.Model):
         db_table = 'reports'
         ordering = ['-created_at']
 
+
+class RiskPrediction(models.Model):
+    """
+    Risk prediction model for HSE - Predictive Safety Module
+    Stores AI-based risk assessments for equipment
+    """
+    RISK_LEVEL_CHOICES = [
+        ('LOW', 'Low Risk - Green'),
+        ('MEDIUM', 'Medium Risk - Orange'),
+        ('HIGH', 'High Risk - Red'),
+    ]
+    
+    equipement = models.ForeignKey(
+        Equipement,
+        on_delete=models.CASCADE,
+        related_name='risk_predictions'
+    )
+    risk_score = models.FloatField(
+        help_text='Risk probability (0.0 to 1.0)'
+    )
+    risk_level = models.CharField(
+        max_length=20,
+        choices=RISK_LEVEL_CHOICES,
+        help_text='LOW (<0.4), MEDIUM (0.4-0.7), HIGH (>0.7)'
+    )
+    confidence = models.FloatField(
+        default=0.5,
+        help_text='Model confidence in prediction (0.0 to 1.0)'
+    )
+    
+    # Risk factors for explainability
+    incident_count_30d = models.IntegerField(default=0)
+    avg_downtime_hours = models.FloatField(default=0.0)
+    time_since_last_incident_days = models.IntegerField(default=0)
+    hardware_incident_ratio = models.FloatField(default=0.5)
+    
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'risk_predictions'
+        ordering = ['-risk_score', '-created_at']
+        indexes = [
+            models.Index(fields=['equipement', '-created_at']),
+            models.Index(fields=['-risk_score']),
+        ]
+    
+    def __str__(self):
+        return f"{self.equipement.nom_equipement} - {self.risk_level} ({self.risk_score:.2%})"
+

@@ -13,7 +13,7 @@ This means the frontend is trying to connect to localhost instead of the Render 
 2. Navigate to **Settings** → **Environment Variables**
 3. Add a new environment variable:
    - **Name**: `VITE_API_BASE_URL`
-   - **Value**: `https://enna-atc-gestion-des-incidents.onrender.com/api`
+   - **Value**: `https://guardian-atc-gestion-des-incidents.onrender.com/api`
    - **Environment**: Production, Preview, Development (select all)
 4. **Redeploy** your application for the changes to take effect
 
@@ -23,7 +23,7 @@ The `vercel.json` file already has the environment variable configured:
 ```json
 {
   "env": {
-    "VITE_API_BASE_URL": "https://enna-atc-gestion-des-incidents.onrender.com/api"
+    "VITE_API_BASE_URL": "https://guardian-atc-gestion-des-incidents.onrender.com/api"
   }
 }
 ```
@@ -44,7 +44,7 @@ After setting the environment variable:
 2. Check the browser console (F12) - you should see:
    ```
    🔧 API Configuration:
-     - Base URL: https://enna-atc-gestion-des-incidents.onrender.com/api
+     - Base URL: https://guardian-atc-gestion-des-incidents.onrender.com/api
    ```
 3. Try logging in - it should connect to Render backend, not localhost
 
@@ -81,7 +81,7 @@ The code now includes **automatic detection** as a fallback:
 ## Quick Fix Steps
 
 1. **Go to Vercel Dashboard** → Your Project → Settings → Environment Variables
-2. **Add**: `VITE_API_BASE_URL` = `https://enna-atc-gestion-des-incidents.onrender.com/api`
+2. **Add**: `VITE_API_BASE_URL` = `https://guardian-atc-gestion-des-incidents.onrender.com/api`
 3. **Select all environments** (Production, Preview, Development)
 4. **Redeploy** your application
 5. **Test** by opening your Vercel app and checking the browser console

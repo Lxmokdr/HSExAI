@@ -21,8 +21,8 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     // Check if user is already logged in (from localStorage)
     const initializeAuth = async () => {
       try {
-        const savedUser = localStorage.getItem("enna_user");
-        const token = localStorage.getItem("enna_token");
+        const savedUser = localStorage.getItem("auth_user");
+        const token = localStorage.getItem("auth_token");
         
         if (savedUser && token) {
           const userData = JSON.parse(savedUser);
@@ -41,9 +41,9 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
               } catch (refreshErr: any) {
                 // Refresh failed, clear auth data
                 console.error("Token refresh failed, clearing auth:", refreshErr.message);
-                localStorage.removeItem("enna_user");
-                localStorage.removeItem("enna_token");
-                localStorage.removeItem("enna_refresh_token");
+                localStorage.removeItem("auth_user");
+                localStorage.removeItem("auth_token");
+                localStorage.removeItem("auth_refresh_token");
                 apiClient.setToken(null);
                 apiClient.setRefreshToken(null);
                 setUser(null);
@@ -51,9 +51,9 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
             } else {
               // Other error, clear auth data
               console.error("Token validation failed, clearing auth:", err.message);
-            localStorage.removeItem("enna_user");
-            localStorage.removeItem("enna_token");
-              localStorage.removeItem("enna_refresh_token");
+            localStorage.removeItem("auth_user");
+            localStorage.removeItem("auth_token");
+              localStorage.removeItem("auth_refresh_token");
             apiClient.setToken(null);
               apiClient.setRefreshToken(null);
             setUser(null);
@@ -105,9 +105,9 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     } finally {
       setUser(null);
       setError(null);
-      localStorage.removeItem("enna_user");
-      localStorage.removeItem("enna_token");
-      localStorage.removeItem("enna_refresh_token");
+      localStorage.removeItem("auth_user");
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("auth_refresh_token");
     }
   };
 

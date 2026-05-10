@@ -1,9 +1,9 @@
-# Cahier des Charges - ENNA ATC
+# Cahier des Charges - Guardian Vision
 ## Système de Gestion des Incidents Techniques
 
 **Version:** 1.0.0  
 **Date:** Décembre 2025  
-**Client:** ENNA (Établissement National de la Navigation Aérienne)
+**Client:** Guardian (Établissement National de la Navigation Aérienne)
 
 ---
 
@@ -27,7 +27,7 @@
 
 ### 1.1 Présentation du Projet
 
-Le système ENNA ATC (Air Traffic Control) est une application web complète dédiée à la gestion des incidents techniques dans le domaine de la navigation aérienne. Le système permet de gérer deux types d'incidents distincts : les incidents matériels (hardware) et les incidents logiciels (software), avec un système de rapports intégré pour l'analyse des incidents logiciels.
+Le système Guardian Vision (Air Traffic Control) est une application web complète dédiée à la gestion des incidents techniques dans le domaine de la navigation aérienne. Le système permet de gérer deux types d'incidents distincts : les incidents matériels (hardware) et les incidents logiciels (software), avec un système de rapports intégré pour l'analyse des incidents logiciels.
 
 ### 1.2 Portée du Projet
 
@@ -45,7 +45,7 @@ Ce document décrit les spécifications fonctionnelles et techniques complètes 
 
 ### 2.1 Contexte
 
-L'ENNA nécessite un système centralisé pour :
+L'Guardian nécessite un système centralisé pour :
 - Enregistrer et suivre les incidents techniques (matériels et logiciels)
 - Gérer les équipements de navigation aérienne
 - Générer des rapports d'analyse d'incidents logiciels
@@ -771,7 +771,7 @@ backend/
 │   ├── urls.py            # Routes API
 │   └── management/
 │       └── commands/      # Commandes Django personnalisées
-├── enna_backend/
+├── core/
 │   ├── settings.py        # Configuration Django
 │   └── urls.py            # URLs principales
 └── manage.py
@@ -1031,7 +1031,7 @@ L'application utilise un layout fixe avec trois zones principales :
 - **Hauteur :** Pleine hauteur de l'écran (h-screen)
 - **Fond :** Couleur de thème `sidebar` avec bordure droite
 - **Contenu :**
-  - **En-tête :** Logo ENNA (image `/enna.png`) dans un carré blanc arrondi, texte "ENNA ATC" en gras
+  - **En-tête :** Logo Guardian (image `/guardian.png`) dans un carré blanc arrondi, texte "Guardian Vision" en gras
   - **Navigation :** Liste de liens avec icônes Lucide React
     - Chaque élément de menu :
       - Icône à gauche (h-5 w-5)
@@ -1066,7 +1066,7 @@ L'application utilise un layout fixe avec trois zones principales :
 **Accès :** Public (redirection automatique si non authentifié)
 
 **Description Visuelle :**
-- **Fond :** Image de fond `/ennabg.jpg` avec overlay sombre (linear-gradient noir 50% opacité)
+- **Fond :** Image de fond `/guardianbg.jpg` avec overlay sombre (linear-gradient noir 50% opacité)
 - **Centrage :** Contenu centré verticalement et horizontalement
 - **Carte de connexion :**
   - **Style :** Carte avec backdrop-blur et fond semi-transparent (`bg-card/95`)
@@ -1074,8 +1074,8 @@ L'application utilise un layout fixe avec trois zones principales :
   - **Ombre :** shadow-2xl
   - **Contenu :**
     - **En-tête :**
-      - Logo ENNA dans un carré blanc arrondi (h-24 w-24, bg-white/95)
-      - Titre "ENNA ATC" (text-4xl, font-bold, couleur primary)
+      - Logo Guardian dans un carré blanc arrondi (h-24 w-24, bg-white/95)
+      - Titre "Guardian Vision" (text-4xl, font-bold, couleur primary)
       - Sous-titre "Système de Gestion des Incidents" (text-lg, font-medium, blanc 90% opacité)
     - **Formulaire :**
       - **Champ Username :**
@@ -1832,7 +1832,7 @@ Carte de statistique :
 
 - Titre : "Rapport d'Analyse d'Incident Logiciel"
 - En-tête : DE/DS/SID (date/heure de l'incident, pas du rapport)
-- **Sans** "Établissement National de la Navigation Aérienne (ENNA)"
+- **Sans** "Établissement National de la Navigation Aérienne (Guardian)"
 - **Sans** "Document généré le..."
 - Texte introductif : "J'ai l'honneur de vous faire parvenir ci-dessous les résultats des investigations..."
 - Contenu : Anomalie, Analyse, Conclusion
@@ -1914,7 +1914,7 @@ Carte de statistique :
 ```
 ┌─────────────────────────────────────┐
 │         Vercel (Frontend)           │
-│  https://enna-atc-...vercel.app     │
+│  https://guardian-atc-...vercel.app     │
 │  - Build automatique                │
 │  - CDN global                       │
 │  - HTTPS automatique                │
@@ -1924,7 +1924,7 @@ Carte de statistique :
                ▼
 ┌─────────────────────────────────────┐
 │      Render.com (Backend)           │
-│  https://enna-atc-...onrender.com  │
+│  https://guardian-atc-...onrender.com  │
 │  - Django REST API                  │
 │  - Auto-scaling                     │
 │  - Health checks                    │
@@ -2019,7 +2019,7 @@ Carte de statistique :
 **1. Cloner le dépôt :**
 ```bash
 git clone <repository-url>
-cd ENNA
+cd Guardian
 ```
 
 **2. Backend :**
@@ -2072,7 +2072,7 @@ backend/
 │   ├── urls.py        # Routes API
 │   └── management/
 │       └── commands/  # Commandes Django
-├── enna_backend/
+├── core/
 │   ├── settings.py    # Configuration
 │   └── urls.py        # URLs principales
 └── manage.py          # CLI Django
@@ -2192,7 +2192,7 @@ Tous les utilisateurs par défaut ont le mot de passe : `01010101`
 
 ## 13. Conclusion
 
-Ce cahier des charges décrit un système complet de gestion des incidents techniques pour l'ENNA, avec :
+Ce cahier des charges décrit un système complet de gestion des incidents techniques pour l'Guardian, avec :
 
 - **Architecture moderne** : React + Django REST API
 - **Sécurité renforcée** : JWT, RBAC, protection des données
@@ -2206,6 +2206,6 @@ Le système répond aux besoins fonctionnels et techniques requis pour une gesti
 
 ---
 
-**Document préparé par :** Équipe de Développement ENNA ATC  
+**Document préparé par :** Équipe de Développement Guardian Vision  
 **Date de dernière mise à jour :** Décembre 2025  
 **Version du document :** 1.0.0

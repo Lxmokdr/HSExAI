@@ -5,7 +5,7 @@ The database has been migrated to PostgreSQL. Use these commands to run Django:
 ## Run Migrations
 
 ```bash
-cd /home/lxmix/data/ENNA/backend
+cd /home/lxmix/data/Guardian/backend
 
 # Option 1: Use the migration script (easiest)
 bash run_migrations.sh
@@ -18,7 +18,7 @@ sudo -E -u postgres env PATH="$PATH" /home/lxmix/data/anaconda3/bin/python manag
 ## Start the Server
 
 ```bash
-cd /home/lxmix/data/ENNA/backend
+cd /home/lxmix/data/Guardian/backend
 
 # Option 1: Use the wrapper script
 ./run_django.sh runserver 8000
@@ -43,7 +43,7 @@ For any Django management command, use:
 ## Why This Works
 
 - PostgreSQL is configured and running
-- Database `enna_db` exists
+- Database `guardian_db` exists
 - Peer authentication works (no password needed when running as postgres user)
 - The wrapper script preserves your anaconda Python environment
 

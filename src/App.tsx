@@ -31,6 +31,14 @@ import Users from "./pages/Users";
 import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
+// AI Safety Intelligence Platform (Phase 3)
+import ExecutiveDashboard from "./pages/ExecutiveDashboard";
+import DetectionAnalysis from "./pages/DetectionAnalysis";
+import AIAlertCenter from "./pages/AIAlertCenter";
+import ZoneOverview from "./pages/ZoneOverview";
+import Violations from "./pages/Violations";
+import AIAnalyticsDashboard from "./pages/AIAnalyticsDashboard";
+
 const queryClient = new QueryClient();
 
 const AppRoutes = () => {
@@ -155,6 +163,59 @@ const AppRoutes = () => {
             </ProtectedRoute>
           } 
         />
+
+        {/* AI Safety Engine Routes */}
+        {/* AI Safety Intelligence Platform Routes (Phase 3 Flagship) */}
+        <Route 
+          path="/ai/dashboard" 
+          element={
+            <ProtectedRoute requirePermission="canAccessDashboards">
+              <ExecutiveDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/ai/upload" 
+          element={
+            <ProtectedRoute requirePermission="canAccessDashboards">
+              <DetectionAnalysis />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/ai/alerts" 
+          element={
+            <ProtectedRoute requirePermission="canAccessDashboards">
+              <AIAlertCenter />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/ai/zones" 
+          element={
+            <ProtectedRoute requirePermission="canAccessDashboards">
+              <ZoneOverview />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/ai/analytics" 
+          element={
+            <ProtectedRoute requirePermission="canAccessDashboards">
+              <AIAnalyticsDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/ai/violations" 
+          element={
+            <ProtectedRoute requirePermission="canAccessDashboards">
+              <Violations />
+            </ProtectedRoute>
+          } 
+        />
+
+
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>
@@ -166,7 +227,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
           <AppRoutes />
         </AuthProvider>

@@ -619,7 +619,7 @@ export function IncidentTable({
           <div class="header">
             <div class="header-code">${headerCode}</div>
             <h1>${incidentTitle}</h1>
-            <p>Établissement National de la Navigation Aérienne (ENNA)</p>
+            <p>Système de Surveillance Industrielle</p>
           </div>
           
           <div class="actions">

@@ -292,7 +292,7 @@ export function useIncidents() {
         conclusion: data.conclusion,
       };
 
-      const report = await apiClient.createReport(reportData);
+      const report = await apiClient.createReport(reportData as any);
       
       // Update reports state - either add new or update existing
       setReports(prev => {
@@ -315,8 +315,8 @@ export function useIncidents() {
 
   const getReports = useCallback(async (incidentId: number) => {
     try {
-      const response = await apiClient.getReports({ incident: incidentId });
-      return response.results;
+      const response = await apiClient.getReports({ incident: incidentId }) as any;
+      return response.results || [];
     } catch (err: any) {
       console.error("Error loading reports:", err);
       return [];

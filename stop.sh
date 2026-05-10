@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# ENNA ATC - Stop Script
-# This script stops all ENNA services
+# Guardian Vision - Stop Script
+# This script stops all Guardian services
 
-echo "🛑 Stopping ENNA ATC - Incident Management System"
+echo "🛑 Stopping Guardian Vision - Incident Management System"
 echo "================================================="
 
 # Colors for output
@@ -30,7 +30,7 @@ kill_port() {
 }
 
 # Stop all services
-echo -e "${BLUE}🧹 Cleaning up ENNA services...${NC}"
+echo -e "${BLUE}🧹 Cleaning up Guardian services...${NC}"
 
 # Stop Frontend (port 8080)
 kill_port 8080
@@ -41,14 +41,14 @@ kill_port 8000
 # Stop DB Viewer (port 3001)
 kill_port 3001
 
-# Kill any remaining processes related to ENNA
-echo -e "${YELLOW}🔄 Killing any remaining ENNA processes...${NC}"
+# Kill any remaining processes related to Guardian
+echo -e "${YELLOW}🔄 Killing any remaining Guardian processes...${NC}"
 pkill -f "vite" 2>/dev/null || true
 pkill -f "manage.py runserver" 2>/dev/null || true
 
 sleep 2
 
 echo ""
-echo -e "${GREEN}✅ All ENNA ATC services have been stopped${NC}"
+echo -e "${GREEN}✅ All Guardian Vision services have been stopped${NC}"
 echo -e "${BLUE}💡 To start again, run: ./start.sh${NC}"
 echo ""

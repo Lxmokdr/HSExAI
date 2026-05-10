@@ -30,12 +30,12 @@ function getApiBaseUrl(): string {
         hostname.includes('.org'));
 
     if (isProduction) {
-      return 'https://enna-atc-gestion-des-incidents.onrender.com/api';
+      return 'https://guardian-vision.onrender.com/api';
     }
   }
 
   // Fallback to localhost for local development
-  return 'http://localhost:8001/api';
+  return 'http://localhost:8000/api';
 }
 
 const API_BASE_URL = getApiBaseUrl();
@@ -119,6 +119,8 @@ export interface Equipment {
   nom_equipement: string;
   partition: string;
   etat?: string;
+  risk_level?: string;
+  risk_score?: number;
   created_at: string;
   updated_at: string;
 }
@@ -151,6 +153,15 @@ export interface IncidentStats {
   maintenance_corrective_count?: number;
 }
 
+export interface RiskPrediction {
+  equipment_id: number;
+  equipment_name?: string;
+  equipment_serial?: string;
+  risk_score: number;
+  risk_level: 'LOW' | 'MEDIUM' | 'HIGH';
+  confidence: number;
+}
+
 // ============================================================================
 // API Client
 // ============================================================================
@@ -163,25 +174,25 @@ class ApiClient {
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
-    this.token = localStorage.getItem('enna_token');
-    this.refreshTokenValue = localStorage.getItem('enna_refresh_token');
+    this.token = localStorage.getItem('auth_token');
+    this.refreshTokenValue = localStorage.getItem('auth_refresh_token');
   }
 
   setToken(token: string | null) {
     this.token = token;
     if (token) {
-      localStorage.setItem('enna_token', token);
+      localStorage.setItem('auth_token', token);
     } else {
-      localStorage.removeItem('enna_token');
+      localStorage.removeItem('auth_token');
     }
   }
 
   setRefreshToken(refreshToken: string | null) {
     this.refreshTokenValue = refreshToken;
     if (refreshToken) {
-      localStorage.setItem('enna_refresh_token', refreshToken);
+      localStorage.setItem('auth_refresh_token', refreshToken);
     } else {
-      localStorage.removeItem('enna_refresh_token');
+      localStorage.removeItem('auth_refresh_token');
     }
   }
 
@@ -190,7 +201,7 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<T> {
     // Always refresh token from localStorage in case it was updated elsewhere
-    const storedToken = localStorage.getItem('enna_token');
+    const storedToken = localStorage.getItem('auth_token');
     if (storedToken) {
       this.token = storedToken;
     }
@@ -231,7 +242,7 @@ class ApiClient {
             // Refresh failed, clear tokens and throw original error
             this.setToken(null);
             this.setRefreshToken(null);
-            localStorage.removeItem('enna_user');
+            localStorage.removeItem('auth_user');
           }
         }
 
@@ -347,8 +358,8 @@ class ApiClient {
     if (response.refresh_token) {
       this.setRefreshToken(response.refresh_token);
     }
-    localStorage.setItem('enna_token', response.token);
-    localStorage.setItem('enna_user', JSON.stringify(response.user));
+    localStorage.setItem('auth_token', response.token);
+    localStorage.setItem('auth_user', JSON.stringify(response.user));
 
     return response;
   }
@@ -360,7 +371,7 @@ class ApiClient {
     }
 
     if (!this.refreshTokenValue) {
-      const storedRefresh = localStorage.getItem('enna_refresh_token');
+      const storedRefresh = localStorage.getItem('auth_refresh_token');
       if (!storedRefresh) {
         throw new Error('No refresh token available');
       }
@@ -398,7 +409,7 @@ class ApiClient {
 
   async logout(): Promise<void> {
     try {
-      const refreshToken = localStorage.getItem('enna_refresh_token');
+      const refreshToken = localStorage.getItem('auth_refresh_token');
       await this.request('/auth/logout/', {
         method: 'POST',
         body: JSON.stringify({ refresh_token: refreshToken }),
@@ -407,9 +418,9 @@ class ApiClient {
       this.token = null;
       this.setToken(null);
       this.setRefreshToken(null);
-      localStorage.removeItem('enna_token');
-      localStorage.removeItem('enna_refresh_token');
-      localStorage.removeItem('enna_user');
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_refresh_token');
+      localStorage.removeItem('auth_user');
     }
   }
 
@@ -600,7 +611,238 @@ class ApiClient {
       method: 'DELETE',
     });
   }
+
+  // ========================================================================
+  // Risk Prediction Methods (HSE Module)
+  // ========================================================================
+
+  async getTopRisks(limit: number = 5): Promise<{ count: number; results: RiskPrediction[] }> {
+    return this.request<{ count: number; results: RiskPrediction[] }>(`/equipement/top-risks/?n=${limit}`);
+  }
+
+  async getEquipmentRisk(id: number): Promise<RiskPrediction> {
+    return this.request<RiskPrediction>(`/equipement/${id}/risk/`);
+  }
+
+  async trainRiskModel(): Promise<any> {
+    return this.request<any>('/risk/train/', {
+      method: 'POST',
+    });
+  }
+
+  // ========================================================================
+  // AI Safety Engine Methods — Phase 1
+  // ========================================================================
+
+  /**
+   * Upload an image and run YOLOv8 PPE detection.
+   * Uses FormData (multipart/form-data) — NOT JSON.
+   */
+  async detectImage(
+    formData: FormData
+  ): Promise<DetectionEvent> {
+    const url = `${this.baseURL}/ai/detect/image/`;
+    const storedToken = localStorage.getItem('auth_token');
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${storedToken}`,
+        // Do NOT set Content-Type — browser sets multipart boundary automatically
+      },
+      body: formData,
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || err.detail || `Detection failed (${response.status})`);
+    }
+    return response.json();
+  }
+
+  async getDetectionEvents(params?: {
+    zone?: number;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ count: number; results: DetectionEventSummary[] }> {
+    const sp = new URLSearchParams();
+    if (params?.zone) sp.set('zone', String(params.zone));
+    if (params?.limit) sp.set('limit', String(params.limit));
+    if (params?.offset) sp.set('offset', String(params.offset));
+    const qs = sp.toString();
+    return this.request<{ count: number; results: DetectionEventSummary[] }>(
+      qs ? `/ai/events/?${qs}` : '/ai/events/'
+    );
+  }
+
+  async getDetectionEvent(id: number): Promise<DetectionEvent> {
+    return this.request<DetectionEvent>(`/ai/events/${id}/`);
+  }
+
+  async getViolations(params?: {
+    risk_level?: string;
+    type?: string;
+    zone?: number;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ count: number; results: SafetyViolation[] }> {
+    const sp = new URLSearchParams();
+    if (params?.risk_level) sp.set('risk_level', params.risk_level);
+    if (params?.type) sp.set('type', params.type);
+    if (params?.zone) sp.set('zone', String(params.zone));
+    if (params?.limit) sp.set('limit', String(params.limit));
+    if (params?.offset) sp.set('offset', String(params.offset));
+    const qs = sp.toString();
+    return this.request<{ count: number; results: SafetyViolation[] }>(
+      qs ? `/ai/violations/?${qs}` : '/ai/violations/'
+    );
+  }
+
+  async getRecentViolations(): Promise<SafetyViolation[]> {
+    return this.request<SafetyViolation[]>('/ai/violations/recent/');
+  }
+
+  async getComplianceStats(days = 30): Promise<ComplianceStats> {
+    return this.request<ComplianceStats>(`/ai/statistics/compliance/?days=${days}`);
+  }
+
+  async getZones(): Promise<{ count: number; results: Zone[] }> {
+    return this.request<{ count: number; results: Zone[] }>('/ai/zones/');
+  }
+
+  async createZone(data: Omit<Zone, 'id' | 'created_at' | 'updated_at' | 'violation_count'>): Promise<Zone> {
+    return this.request<Zone>('/ai/zones/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateZone(id: number, data: Partial<Zone>): Promise<Zone> {
+    return this.request<Zone>(`/ai/zones/${id}/`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteZone(id: number): Promise<void> {
+    await this.request(`/ai/zones/${id}/`, { method: 'DELETE' });
+  }
+
+  // Phase 2 Analytics
+  async getComplianceAnalytics(): Promise<any> {
+    return this.request('/ai/analytics/compliance/');
+  }
+
+  async getZoneRiskAnalytics(): Promise<any> {
+    return this.request('/ai/analytics/zones/');
+  }
+
+  async getSafetyInsights(): Promise<any[]> {
+    return this.request<any[]>('/ai/insights/');
+  }
+
+  // Phase 3 Executive Analytics
+  async getExecutiveSummary(): Promise<any> {
+    return this.request('/ai/analytics/summary/');
+  }
+
+  async getPPEDistribution(): Promise<any[]> {
+    return this.request('/ai/analytics/ppe/');
+  }
 }
 
 // Export singleton instance
 export const apiClient = new ApiClient(API_BASE_URL);
+
+// ============================================================================
+// AI Engine Type Definitions
+// ============================================================================
+
+export interface Zone {
+  id: number;
+  name: string;
+  description: string;
+  risk_category: 'low' | 'medium' | 'high' | 'critical';
+  location: string;
+  is_active: boolean;
+  violation_count: number;
+  required_ppe_rules: string[];
+  compliance_threshold: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SafetyViolation {
+  id: number;
+  event_id: number;
+  violation_type: 'no_helmet' | 'no_vest' | 'no_mask' | 'no_gloves' | 'unauthorized_person' | 'other';
+  violation_type_display: string;
+  confidence_score: number;
+  risk_level: 'low' | 'medium' | 'high' | 'critical';
+  risk_level_display: string;
+  bounding_box: { x1: number; y1: number; x2: number; y2: number };
+  zone: number | null;
+  zone_name: string | null;
+  notes: string;
+  timestamp: string;
+  severity: string;
+  required_ppe: string[];
+  detected_ppe: string[];
+  ai_summary: string;
+  zone_risk: string;
+}
+
+export interface DetectedObject {
+  class_id: number;
+  class_name: string;
+  confidence: number;
+  bounding_box: { x1: number; y1: number; x2: number; y2: number };
+}
+
+export interface DetectionResults {
+  detected_objects: DetectedObject[];
+  violation_classes: string[];
+  compliant_classes: string[];
+  image_size: [number, number];
+}
+
+export interface DetectionEvent {
+  id: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  zone: number | null;
+  zone_name: string | null;
+  original_image_url: string | null;
+  annotated_image_url: string | null;
+  detection_results: DetectionResults;
+  violations: SafetyViolation[];
+  compliance_rate: number;
+  processing_time_ms: number;
+  error_message: string;
+  risk_score: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  compliance_status: boolean;
+  ai_summary: string;
+  created_by_username: string | null;
+  created_at: string;
+}
+
+export interface DetectionEventSummary {
+  id: number;
+  status: string;
+  zone: number | null;
+  zone_name: string | null;
+  original_image_url: string | null;
+  annotated_image_url: string | null;
+  violation_count: number;
+  processing_time_ms: number;
+  created_by_username: string | null;
+  created_at: string;
+}
+
+export interface ComplianceStats {
+  total_events: number;
+  total_violations: number;
+  compliance_rate: number;
+  violations_by_type: Record<string, number>;
+  violations_by_risk: Record<string, number>;
+  violations_by_day: Array<{ date: string; count: number }>;
+  top_zones: Array<{ zone: string; count: number }>;
+}
+

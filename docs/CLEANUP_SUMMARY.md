@@ -1,6 +1,6 @@
 # Code Structure Cleanup Summary
 
-This document summarizes the code organization and cleanup performed on the ENNA ATC project.
+This document summarizes the code organization and cleanup performed on the Guardian Vision project.
 
 ## Files Removed
 
@@ -14,7 +14,7 @@ This document summarizes the code organization and cleanup performed on the ENNA
 - `backend-simple/migrate-*.js` - All migration scripts (5 files)
 - `backend-simple/node_modules/` - Old Node.js dependencies directory
 
-**Note:** `backend-simple/enna.db` is kept as it contains the shared database.
+**Note:** `backend-simple/guardian.db` is kept as it contains the shared database.
 
 ### Temporary Documentation Files
 Moved to `docs/archive/`:
@@ -85,15 +85,15 @@ docs/
 ## Current Structure
 
 ```
-ENNA/
+Guardian/
 ├── backend/                    # Django backend
 │   ├── api/                    # API application
-│   ├── enna_backend/           # Django project settings
+│   ├── core/           # Django project settings
 │   ├── manage.py
 │   ├── requirements.txt
 │   └── setup_django.sh
 ├── backend-simple/             # Legacy (database only)
-│   └── enna.db                # Shared SQLite database
+│   └── guardian.db                # Shared SQLite database
 ├── src/                        # React frontend
 │   ├── components/
 │   ├── pages/
@@ -122,6 +122,6 @@ ENNA/
 ## Next Steps (Optional)
 
 1. Consider removing `@tanstack/react-query` if not planning to use it
-2. Archive or remove `backend-simple/` directory entirely (keep only `enna.db`)
-3. Consider moving `enna.db` to a `data/` directory for better organization
+2. Archive or remove `backend-simple/` directory entirely (keep only `guardian.db`)
+3. Consider moving `guardian.db` to a `data/` directory for better organization
 

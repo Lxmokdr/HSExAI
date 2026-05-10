@@ -6,7 +6,7 @@ User = get_user_model()
 
 
 class Command(BaseCommand):
-    help = 'Create default users for ENNA system'
+    help = 'Create default users for Guardian system'
 
     def handle(self, *args, **options):
         default_password = '01010101'

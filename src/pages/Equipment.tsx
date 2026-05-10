@@ -33,6 +33,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { IncidentTable } from "@/components/IncidentTable";
+import { RiskLevelBadge } from "@/components/RiskLevelBadge";
 
 // Equipment names - image equipment with ALER prefix + partition list as equipment
 const EQUIPMENT_NAMES = [
@@ -319,13 +320,14 @@ export default function Equipment() {
                     <TableHead>Partition</TableHead>
                     <TableHead>Numéro de série</TableHead>
                     <TableHead>État</TableHead>
+                    <TableHead>Niveau de Risque</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {equipment.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center text-muted-foreground">
                         Aucun équipement enregistré
                       </TableCell>
                     </TableRow>
@@ -339,6 +341,9 @@ export default function Equipment() {
                         <TableCell>{item.partition}</TableCell>
                         <TableCell>{item.num_serie || "-"}</TableCell>
                         <TableCell>{item.etat || "-"}</TableCell>
+                        <TableCell>
+                          <RiskLevelBadge level={item.risk_level} score={item.risk_score} showScore />
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button
@@ -420,7 +425,7 @@ export default function Equipment() {
               Aucun incident enregistré pour cet équipement
             </div>
           ) : (
-            <IncidentTable incidents={equipmentHistory} onRefresh={() => {}} />
+            <IncidentTable incidents={equipmentHistory} />
           )}
         </DialogContent>
       </Dialog>

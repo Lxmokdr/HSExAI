@@ -1,6 +1,6 @@
 # Utility Scripts
 
-This directory contains utility scripts for managing the ENNA backend.
+This directory contains utility scripts for managing the Guardian backend.
 
 ## Available Scripts
 

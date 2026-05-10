@@ -1,11 +1,16 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { AlertTriangle, Cpu, HardDrive, Clock, TrendingUp, Calendar, Server } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useIncidents } from "@/hooks/useIncidents";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { apiClient, RiskPrediction } from "@/services/api";
+import { RiskLevelBadge } from "@/components/RiskLevelBadge";
+import { ShieldAlert, PlayCircle } from "lucide-react";
 
 type PeriodType = 'week' | 'month' | 'year';
 
@@ -22,6 +27,51 @@ export default function AdminDashboard() {
   // Constants
   const currentYear = new Date().getFullYear();
   const isCurrentYear = selectedYear === currentYear;
+
+  const [topRisks, setTopRisks] = useState<RiskPrediction[]>([]);
+  const [equipmentList, setEquipmentList] = useState<any[]>([]);
+  const [isTraining, setIsTraining] = useState(false);
+
+  useEffect(() => {
+    // Fetch data for predictive safety module
+    const fetchRiskData = async () => {
+      try {
+        const [risksRes, equipRes] = await Promise.all([
+          apiClient.getTopRisks(10),
+          apiClient.getEquipment()
+        ]);
+        setTopRisks(risksRes.results || []);
+        if ('results' in equipRes && Array.isArray(equipRes.results)) {
+          setEquipmentList(equipRes.results);
+        }
+      } catch (error) {
+        console.error("Failed to load risk data", error);
+      }
+    };
+    fetchRiskData();
+  }, []);
+
+  const handleTrainModel = async () => {
+    try {
+      setIsTraining(true);
+      const res = await apiClient.trainRiskModel();
+      toast.success(res.message || "Modèle IA entraîné avec succès");
+      
+      // Refresh top risks and equipment list (for the pie chart)
+      const [risksRes, equipRes] = await Promise.all([
+        apiClient.getTopRisks(10),
+        apiClient.getEquipment()
+      ]);
+      setTopRisks(risksRes.results || []);
+      if ('results' in equipRes && Array.isArray(equipRes.results)) {
+        setEquipmentList(equipRes.results);
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Erreur lors de l'entraînement du modèle");
+    } finally {
+      setIsTraining(false);
+    }
+  };
 
   // ============================================================================
   // Helper Functions
@@ -391,6 +441,26 @@ export default function AdminDashboard() {
       .sort((a, b) => a.year - b.year);
   }, [hardwareIncidents]);
 
+  // Risk Distribution Data
+  const riskDistributionData = useMemo(() => {
+    const counts = { LOW: 0, MEDIUM: 0, HIGH: 0, UNKNOWN: 0 };
+    equipmentList.forEach(eq => {
+      const level = eq.risk_level || 'UNKNOWN';
+      if (counts[level as keyof typeof counts] !== undefined) {
+        counts[level as keyof typeof counts]++;
+      } else {
+        counts.UNKNOWN++;
+      }
+    });
+
+    return [
+      { name: 'Risque Faible', value: counts.LOW, color: '#10b981' },
+      { name: 'Risque Moyen', value: counts.MEDIUM, color: '#f59e0b' },
+      { name: 'Risque Élevé', value: counts.HIGH, color: '#ef4444' },
+      { name: 'Inconnu', value: counts.UNKNOWN, color: '#9ca3af' }
+    ].filter(item => item.value > 0);
+  }, [equipmentList]);
+
   // Corrective incidents comparison across servers (using ALL incidents, not filtered)
   const correctiveIncidentsByServer = useMemo(() => {
     const serverMap: Record<string, number> = {};
@@ -411,12 +481,94 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">
-          Tableau de bord
-        </h1>
-        <p className="text-muted-foreground">
-          Vue d'ensemble complète des incidents techniques et statistiques
-        </p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">
+              Tableau de bord
+            </h1>
+            <p className="text-muted-foreground">
+              Vue d'ensemble complète des incidents techniques et statistiques
+            </p>
+          </div>
+          <Button onClick={handleTrainModel} disabled={isTraining} className="flex items-center gap-2">
+            <PlayCircle className="w-4 h-4" />
+            {isTraining ? "Entraînement en cours..." : "Entraîner le Modèle IA"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Predictive Safety Module */}
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+          <ShieldAlert className="h-6 w-6" />
+          Module de Sécurité Prédictive (IA)
+        </h2>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          
+          <Card className="col-span-1 lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Top 10 des équipements à risque</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {topRisks.length > 0 ? (
+                <div className="space-y-4">
+                  {topRisks.map((risk, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
+                      <div>
+                        <div className="font-semibold">{risk.equipment_name || `Équipement #${risk.equipment_id}`}</div>
+                        <div className="text-xs text-muted-foreground">{risk.equipment_serial || "N/A"}</div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <RiskLevelBadge level={risk.risk_level} score={risk.risk_score} showScore />
+                        <div className="text-xs text-muted-foreground">
+                          Confiance: {(risk.confidence * 100).toFixed(0)}%
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  Aucune prédiction de risque disponible
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="col-span-1">
+            <CardHeader>
+              <CardTitle>Répartition des risques</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center">
+              {riskDistributionData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={riskDistributionData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {riskDistributionData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  Pas de données
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+        </div>
       </div>
 
       {/* Hardware Section */}

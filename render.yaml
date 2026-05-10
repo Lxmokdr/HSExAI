@@ -1,7 +1,7 @@
 
 services:
   - type: web
-    name: enna-backend
+    name: guardian-backend
     env: python
     buildCommand: cd backend && bash setup_django.sh
     startCommand: cd backend && bash start_render.sh
@@ -10,37 +10,37 @@ services:
         value: 3.11.2
       - key: DB_NAME
         fromDatabase:
-          name: enna-db
+          name: guardian-db
           property: database
       - key: DB_USER
         fromDatabase:
-          name: enna-db
+          name: guardian-db
           property: user
       - key: DB_PASSWORD
         fromDatabase:
-          name: enna-db
+          name: guardian-db
           property: password
       - key: DB_HOST
         fromDatabase:
-          name: enna-db
+          name: guardian-db
           property: host
       - key: DB_PORT
         fromDatabase:
-          name: enna-db
+          name: guardian-db
           property: port
       - key: SECRET_KEY
         generateValue: true
       - key: DEBUG
         value: "False"
       - key: ALLOWED_HOSTS
-        value: "enna-atc-gestion-des-incidents.onrender.com,enna-atc-gestion-des-incidents.vercel.app"
+        value: "guardian-vision.onrender.com,guardian-vision.vercel.app"
       - key: RENDER
         value: "true"
 
 databases:
-  - name: enna-db
-    databaseName: enna_db
-    user: enna_user
+  - name: guardian-db
+    databaseName: guardian_db
+    user: guardian_user
     plan: free
     # Note: The database service ID is: dpg-d4u9587gi27c738kb790-a
     # Render will automatically inject connection variables via fromDatabase above

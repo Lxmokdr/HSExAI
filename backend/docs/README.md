@@ -1,6 +1,6 @@
 # Backend Documentation
 
-This directory contains documentation for the ENNA backend.
+This directory contains documentation for the Guardian backend.
 
 ## Available Documentation
 

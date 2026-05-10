@@ -11,7 +11,7 @@
       }
     ],
     "env": {
-      "VITE_API_BASE_URL": "https://enna-atc-gestion-des-incidents.onrender.com/api"
+      "VITE_API_BASE_URL": "https://guardian-vision.onrender.com/api"
     }
   }
   

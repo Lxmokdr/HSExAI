@@ -1,6 +1,6 @@
 # PostgreSQL Migration Guide
 
-This guide explains how to migrate the ENNA backend from SQLite to PostgreSQL.
+This guide explains how to migrate the Guardian backend from SQLite to PostgreSQL.
 
 ## Prerequisites
 
@@ -31,17 +31,17 @@ sudo -u postgres psql
 2. **Create database and user**:
 ```sql
 -- Create database
-CREATE DATABASE enna_db;
+CREATE DATABASE guardian_db;
 
 -- Create user
-CREATE USER enna_user WITH PASSWORD 'enna_password';
+CREATE USER guardian_user WITH PASSWORD 'guardian_password';
 
 -- Grant privileges
-GRANT ALL PRIVILEGES ON DATABASE enna_db TO enna_user;
+GRANT ALL PRIVILEGES ON DATABASE guardian_db TO guardian_user;
 
 -- For PostgreSQL 15+, also grant schema privileges
-\c enna_db
-GRANT ALL ON SCHEMA public TO enna_user;
+\c guardian_db
+GRANT ALL ON SCHEMA public TO guardian_user;
 
 -- Exit psql
 \q
@@ -58,8 +58,8 @@ cp .env.example .env
 2. **Edit `.env` file** with your PostgreSQL credentials:
 ```bash
 # PostgreSQL Database Configuration
-DB_NAME=enna_db
-DB_USER=enna_user
+DB_NAME=guardian_db
+DB_USER=guardian_user
 DB_PASSWORD=your_secure_password_here
 DB_HOST=localhost
 DB_PORT=5432
@@ -127,7 +127,7 @@ If you have existing data in SQLite that you want to migrate:
 sudo apt install pgloader
 
 # Migrate data
-pgloader sqlite:///path/to/backend-simple/enna.db postgresql://enna_user:enna_password@localhost/enna_db
+pgloader sqlite:///path/to/backend-simple/guardian.db postgresql://guardian_user:guardian_password@localhost/guardian_db
 ```
 
 ## Step 7: Create Default Users
@@ -174,8 +174,8 @@ The application should now be using PostgreSQL!
 
 - Grant schema privileges (for PostgreSQL 15+):
   ```sql
-  \c enna_db
-  GRANT ALL ON SCHEMA public TO enna_user;
+  \c guardian_db
+  GRANT ALL ON SCHEMA public TO guardian_user;
   ```
 
 ### Module Not Found: psycopg or psycopg2
@@ -199,9 +199,9 @@ This will remove the conflicting psycopg2 and install psycopg (v3) which is comp
 
 The database configuration in `settings.py` uses environment variables:
 
-- `DB_NAME`: Database name (default: `enna_db`)
-- `DB_USER`: PostgreSQL username (default: `enna_user`)
-- `DB_PASSWORD`: PostgreSQL password (default: `enna_password`)
+- `DB_NAME`: Database name (default: `guardian_db`)
+- `DB_USER`: PostgreSQL username (default: `guardian_user`)
+- `DB_PASSWORD`: PostgreSQL password (default: `guardian_password`)
 - `DB_HOST`: Database host (default: `localhost`)
 - `DB_PORT`: Database port (default: `5432`)
 
@@ -228,7 +228,7 @@ If you need to rollback to SQLite temporarily:
    DATABASES = {
        'default': {
            'ENGINE': 'django.db.backends.sqlite3',
-           'NAME': str(BASE_DIR.parent / 'backend-simple' / 'enna.db'),
+           'NAME': str(BASE_DIR.parent / 'backend-simple' / 'guardian.db'),
        }
    }
    ```

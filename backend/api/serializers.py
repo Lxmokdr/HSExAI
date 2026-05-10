@@ -10,7 +10,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
 # Local imports
-from .models import User, HardwareIncident, SoftwareIncident, Report, Equipement
+from .models import User, HardwareIncident, SoftwareIncident, Report, Equipement, RiskPrediction
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -78,10 +78,25 @@ class LoginSerializer(serializers.Serializer):
 
 
 class EquipmentSerializer(serializers.ModelSerializer):
+    risk_level = serializers.SerializerMethodField()
+    risk_score = serializers.SerializerMethodField()
+
     class Meta:
         model = Equipement
-        fields = ['id', 'num_serie', 'nom_equipement', 'partition', 'etat', 'created_at', 'updated_at']
+        fields = ['id', 'num_serie', 'nom_equipement', 'partition', 'etat', 'risk_level', 'risk_score', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_risk_level(self, obj):
+        try:
+            return obj.risk_predictions.first().risk_level if obj.risk_predictions.exists() else 'UNKNOWN'
+        except Exception:
+            return 'UNKNOWN'
+            
+    def get_risk_score(self, obj):
+        try:
+            return obj.risk_predictions.first().risk_score if obj.risk_predictions.exists() else 0.0
+        except Exception:
+            return 0.0
 
 
 class HardwareIncidentSerializer(serializers.ModelSerializer):
@@ -224,4 +239,39 @@ class ReportSerializer(serializers.ModelSerializer):
             report.save()
         
         return report
+
+
+class RiskPredictionSerializer(serializers.ModelSerializer):
+    """Serializer for AI-based risk predictions"""
+    equipment_name = serializers.CharField(source='equipement.nom_equipement', read_only=True)
+    equipment_serial = serializers.CharField(source='equipement.num_serie', read_only=True)
+    
+    class Meta:
+        model = RiskPrediction
+        fields = [
+            'id',
+            'equipement',
+            'equipment_name',
+            'equipment_serial',
+            'risk_score',
+            'risk_level',
+            'confidence',
+            'incident_count_30d',
+            'avg_downtime_hours',
+            'time_since_last_incident_days',
+            'hardware_incident_ratio',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class RiskPredictionDetailSerializer(serializers.Serializer):
+    """Serializer for AI model predictions response"""
+    equipment_id = serializers.IntegerField()
+    risk_score = serializers.FloatField()
+    risk_level = serializers.CharField()
+    confidence = serializers.FloatField()
+    error = serializers.CharField(required=False, allow_blank=True)
+
 

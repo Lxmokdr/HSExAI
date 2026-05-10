@@ -2,9 +2,9 @@
 
 ## Architecture Overview
 
-- **Frontend**: Vercel (`https://enna-atc-gestion-des-incidents.vercel.app`)
-- **Backend**: Render (`https://enna-atc-gestion-des-incidents.onrender.com`)
-- **Database**: Render PostgreSQL (`enna-db`)
+- **Frontend**: Vercel (`https://guardian-atc-gestion-des-incidents.vercel.app`)
+- **Backend**: Render (`https://guardian-atc-gestion-des-incidents.onrender.com`)
+- **Database**: Render PostgreSQL (`guardian-db`)
 
 ## Configuration Status
 
@@ -14,7 +14,7 @@
 ```json
 {
   "env": {
-    "VITE_API_BASE_URL": "https://enna-atc-gestion-des-incidents.onrender.com/api"
+    "VITE_API_BASE_URL": "https://guardian-atc-gestion-des-incidents.onrender.com/api"
   }
 }
 ```
@@ -28,15 +28,15 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 
 ### ✅ Backend Configuration (Render)
 
-**File**: `backend/enna_backend/settings.py`
+**File**: `backend/core/settings.py`
 
 **CORS Settings**:
 ```python
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:8080',
     'http://localhost:5173',  # Vite dev server
-    'https://enna-atc-gestion-des-incidents.vercel.app',  # ✅ Vercel frontend
-    'https://enna-atc-gestion-des-incidents.onrender.com',
+    'https://guardian-atc-gestion-des-incidents.vercel.app',  # ✅ Vercel frontend
+    'https://guardian-atc-gestion-des-incidents.onrender.com',
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -47,7 +47,7 @@ CORS_ALLOW_CREDENTIALS = True
 ### ✅ Database Configuration (Render)
 
 **File**: `render.yaml`
-- Database service: `enna-db`
+- Database service: `guardian-db`
 - Database variables automatically injected via `fromDatabase`
 - Connection uses TCP/IP with password authentication
 
@@ -56,7 +56,7 @@ CORS_ALLOW_CREDENTIALS = True
 ### 1. Test Backend Health
 
 ```bash
-curl https://enna-atc-gestion-des-incidents.onrender.com/api/health/
+curl https://guardian-atc-gestion-des-incidents.onrender.com/api/health/
 ```
 
 Expected: Should return a response (if health endpoint exists) or 404 (which is normal if endpoint doesn't exist).
@@ -70,10 +70,10 @@ Open browser console on Vercel frontend and check:
 
 ### 3. Test Login Flow
 
-1. Go to `https://enna-atc-gestion-des-incidents.vercel.app`
+1. Go to `https://guardian-atc-gestion-des-incidents.vercel.app`
 2. Try to login with test credentials
 3. Check browser Network tab:
-   - Request to `https://enna-atc-gestion-des-incidents.onrender.com/api/auth/login/`
+   - Request to `https://guardian-atc-gestion-des-incidents.onrender.com/api/auth/login/`
    - Response should be 200 with JWT tokens
    - No CORS errors
 
@@ -112,18 +112,18 @@ Access to fetch at 'https://...' from origin 'https://...' has been blocked by C
 ## Environment Variables Summary
 
 ### Render (Backend)
-- `DB_NAME` - fromDatabase (enna-db)
-- `DB_USER` - fromDatabase (enna-db)
-- `DB_PASSWORD` - fromDatabase (enna-db)
-- `DB_HOST` - fromDatabase (enna-db)
-- `DB_PORT` - fromDatabase (enna-db)
+- `DB_NAME` - fromDatabase (guardian-db)
+- `DB_USER` - fromDatabase (guardian-db)
+- `DB_PASSWORD` - fromDatabase (guardian-db)
+- `DB_HOST` - fromDatabase (guardian-db)
+- `DB_PORT` - fromDatabase (guardian-db)
 - `SECRET_KEY` - generateValue: true
 - `DEBUG` - "False"
-- `ALLOWED_HOSTS` - "enna-atc-gestion-des-incidents.onrender.com,enna-atc-gestion-des-incidents.vercel.app"
+- `ALLOWED_HOSTS` - "guardian-atc-gestion-des-incidents.onrender.com,guardian-atc-gestion-des-incidents.vercel.app"
 - `RENDER` - "true"
 
 ### Vercel (Frontend)
-- `VITE_API_BASE_URL` - "https://enna-atc-gestion-des-incidents.onrender.com/api"
+- `VITE_API_BASE_URL` - "https://guardian-atc-gestion-des-incidents.onrender.com/api"
 
 ## Next Steps
 

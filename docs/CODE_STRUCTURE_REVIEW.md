@@ -177,7 +177,7 @@ backend/
 │   ├── permissions.py     # Custom permission classes
 │   ├── urls.py            # URL routing
 │   └── migrations/        # Database migrations
-├── enna_backend/
+├── core/
 │   ├── settings.py        # Django settings
 │   └── urls.py           # Root URL config
 └── manage.py

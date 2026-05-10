@@ -1,6 +1,6 @@
-# ENNA Django Backend
+# Guardian Backend
 
-Django REST Framework backend for the ENNA ATC incident management system.
+Django REST Framework backend for the Guardian Vision incident management system.
 
 ## Requirements
 
@@ -25,9 +25,9 @@ Quick setup:
 ```bash
 # Create database and user
 sudo -u postgres psql
-CREATE DATABASE enna_db;
-CREATE USER enna_user WITH PASSWORD 'your_password';
-GRANT ALL PRIVILEGES ON DATABASE enna_db TO enna_user;
+CREATE DATABASE guardian_db;
+CREATE USER guardian_user WITH PASSWORD 'your_password';
+GRANT ALL PRIVILEGES ON DATABASE guardian_db TO guardian_user;
 \q
 ```
 
@@ -76,7 +76,7 @@ backend/
 │       └── commands/
 │           ├── create_default_users.py
 │           └── create_test_data.py
-├── enna_backend/          # Django project settings
+├── core/          # Django project settings
 │   ├── settings.py        # Main configuration
 │   ├── urls.py            # Root URLs
 │   └── wsgi.py            # WSGI config

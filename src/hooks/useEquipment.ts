@@ -25,7 +25,7 @@ export function useEquipment() {
       setLoading(true);
       setError(null);
 
-      const response = await apiClient.getEquipment();
+      const response = await apiClient.getEquipment() as any;
       setEquipment(response.results || []);
     } catch (err: any) {
       setError(err.message || "Erreur lors du chargement des équipements");

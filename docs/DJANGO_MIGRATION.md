@@ -1,6 +1,6 @@
 # Django Backend Migration
 
-The ENNA backend has been successfully migrated from Node.js/Express to Django REST Framework.
+The Guardian backend has been successfully migrated from Node.js/Express to Django REST Framework.
 
 ## What Changed
 
@@ -12,7 +12,7 @@ The ENNA backend has been successfully migrated from Node.js/Express to Django R
 - **Old**: `backend-simple/` (Node.js)
 - **New**: `backend/` (Django)
 
-The database file remains the same: `backend-simple/enna.db` (shared between old and new backend)
+The database file remains the same: `backend-simple/guardian.db` (shared between old and new backend)
 
 ## Features Preserved
 
@@ -95,7 +95,7 @@ The main `start.sh` script has been updated to:
 ## Database
 
 The Django backend uses the **same SQLite database** as the Node.js backend:
-- Location: `backend-simple/enna.db`
+- Location: `backend-simple/guardian.db`
 - All existing data is preserved
 - Migrations create the schema if it doesn't exist
 
@@ -157,7 +157,7 @@ python manage.py runserver 8001
 ### Database Issues
 
 If you get database errors:
-1. Check that `backend-simple/enna.db` exists
+1. Check that `backend-simple/guardian.db` exists
 2. Run migrations: `python manage.py migrate`
 3. Check file permissions
 
@@ -171,7 +171,7 @@ backend/
 ├── setup_django.sh
 ├── runserver.sh
 ├── README.md
-├── enna_backend/
+├── core/
 │   ├── __init__.py
 │   ├── settings.py
 │   ├── urls.py

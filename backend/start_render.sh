@@ -6,7 +6,7 @@
 # Don't exit on error for user creation - we want the server to start even if users fail
 set +e
 
-echo "🚀 Starting ENNA Backend on Render..."
+echo "🚀 Starting Guardian Backend on Render..."
 echo "======================================"
 
 # Debug: Show current directory and what's available
@@ -126,7 +126,7 @@ fi
 echo ""
 SERVER_PORT=${PORT:-8000}
 echo "✅ Starting Django server on port $SERVER_PORT..."
-echo "   Backend will be available at: https://enna-atc-gestion-des-incidents.onrender.com"
+echo "   Backend will be available at: https://guardian-vision.onrender.com"
 echo ""
 set -e  # Exit on error for server startup
 exec $PYTHON_CMD manage.py runserver 0.0.0.0:$SERVER_PORT

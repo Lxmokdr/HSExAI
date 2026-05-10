@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# ENNA ATC - Startup Script
-# This script starts all necessary services for the ENNA incident management system
+# Guardian Vision - Startup Script
+# This script starts all necessary services for the Guardian incident management system
 
-echo "🚀 Starting ENNA ATC - Incident Management System"
+echo "🚀 Starting Guardian Vision - Incident Management System"
 echo "=================================================="
 
 # If we're on Render, redirect to start_render.sh
@@ -143,71 +143,87 @@ fi
         bash setup_django.sh
     fi
 
-# Check database authentication method
+# Determine database backend
+USE_SQLITE=${USE_SQLITE:-true}  # Default to SQLite for local development
 DB_PASSWORD=${DB_PASSWORD:-}
 DB_HOST=${DB_HOST:-localhost}
 DB_PORT=${DB_PORT:-5432}
 
-# Check if password is empty, default, or just whitespace
-if [ -z "$DB_PASSWORD" ] || [ "$DB_PASSWORD" = "enna_password" ] || [ -z "${DB_PASSWORD// }" ]; then
-    # Check if we're in a containerized environment (no sudo available)
-    if ! command -v sudo &> /dev/null || [ "$DB_HOST" != "localhost" ]; then
-        # Containerized environment - use environment variables
-        echo -e "${YELLOW}⚠️  Containerized environment detected${NC}"
-        echo -e "${YELLOW}   Using environment variables for database connection${NC}"
-        # Export all database environment variables
-        export DB_PASSWORD DB_USER DB_NAME DB_HOST DB_PORT
-        $PYTHON_CMD manage.py runserver 0.0.0.0:8000 &
-        BACKEND_PID=$!
-    elif command -v sudo &> /dev/null; then
-        # Local development - try peer authentication with sudo
-        echo -e "${YELLOW}⚠️  Database password not configured. Attempting peer authentication...${NC}"
-        echo -e "${YELLOW}   This requires sudo access.${NC}"
+# Export USE_SQLITE to Django
+export USE_SQLITE
+
+if [ "$USE_SQLITE" = "true" ] || [ "$USE_SQLITE" = "True" ]; then
+    # SQLite for local development - simple setup
+    echo -e "${GREEN}✅ Using SQLite database for local development${NC}"
     
-    # Try to run with sudo (test if passwordless sudo works for postgres user)
-    if sudo -n -u postgres true 2>/dev/null; then
-        # Passwordless sudo available
-        echo -e "${GREEN}✅ Using passwordless sudo for peer authentication${NC}"
-            SERVER_PORT=${PORT:-8001}
-            sudo -E -u postgres env PATH="$PATH" "$PYTHON_CMD" manage.py runserver 0.0.0.0:$SERVER_PORT &
-        BACKEND_PID=$!
-    else
-        # Try running anyway - might work with passwordless sudo configured
-        echo -e "${YELLOW}⚠️  Attempting to use sudo (passwordless sudo may be configured)...${NC}"
-            SERVER_PORT=${PORT:-8001}
-            if sudo -E -u postgres env PATH="$PATH" "$PYTHON_CMD" manage.py runserver 0.0.0.0:$SERVER_PORT & 2>/dev/null; then
-        BACKEND_PID=$!
-        sleep 2
-        if ! kill -0 $BACKEND_PID 2>/dev/null; then
-                    echo -e "${RED}❌ Sudo failed. Please configure passwordless sudo or set DB_PASSWORD${NC}"
+    SERVER_PORT=${PORT:-8000}
+    $PYTHON_CMD manage.py runserver 0.0.0.0:$SERVER_PORT &
+    BACKEND_PID=$!
+else
+    # PostgreSQL configuration
+    echo -e "${BLUE}🗄️  Using PostgreSQL database${NC}"
+    
+    # Check if password is empty, default, or just whitespace
+    if [ -z "$DB_PASSWORD" ] || [ "$DB_PASSWORD" = "guardian_password" ] || [ -z "${DB_PASSWORD// }" ]; then
+        # Check if we're in a containerized environment (no sudo available)
+        if ! command -v sudo &> /dev/null || [ "$DB_HOST" != "localhost" ]; then
+            # Containerized environment - use environment variables
+            echo -e "${YELLOW}⚠️  Containerized environment detected${NC}"
+            echo -e "${YELLOW}   Using environment variables for database connection${NC}"
+            # Export all database environment variables
+            export DB_PASSWORD DB_USER DB_NAME DB_HOST DB_PORT
+            $PYTHON_CMD manage.py runserver 0.0.0.0:8000 &
+            BACKEND_PID=$!
+        elif command -v sudo &> /dev/null; then
+            # Local development - try peer authentication with sudo
+            echo -e "${YELLOW}⚠️  Database password not configured. Attempting peer authentication...${NC}"
+            echo -e "${YELLOW}   This requires sudo access.${NC}"
+        
+            # Try to run with sudo (test if passwordless sudo works for postgres user)
+            if sudo -n -u postgres true 2>/dev/null; then
+                # Passwordless sudo available
+                echo -e "${GREEN}✅ Using passwordless sudo for peer authentication${NC}"
+                SERVER_PORT=${PORT:-8001}
+                sudo -E -u postgres env PATH="$PATH" "$PYTHON_CMD" manage.py runserver 0.0.0.0:$SERVER_PORT &
+                BACKEND_PID=$!
+            else
+                # Try running anyway - might work with passwordless sudo configured
+                echo -e "${YELLOW}⚠️  Attempting to use sudo (passwordless sudo may be configured)...${NC}"
+                SERVER_PORT=${PORT:-8001}
+                if sudo -E -u postgres env PATH="$PATH" "$PYTHON_CMD" manage.py runserver 0.0.0.0:$SERVER_PORT & 2>/dev/null; then
+                    BACKEND_PID=$!
+                    sleep 2
+                    if ! kill -0 $BACKEND_PID 2>/dev/null; then
+                        echo -e "${RED}❌ Sudo failed. Please configure passwordless sudo or set DB_PASSWORD${NC}"
+                        cd ..
+                        exit 1
+                    fi
+                else
+                    echo -e "${RED}❌ Sudo not available. Please set DB_PASSWORD environment variable${NC}"
                     cd ..
                     exit 1
                 fi
-            else
-                echo -e "${RED}❌ Sudo not available. Please set DB_PASSWORD environment variable${NC}"
-            cd ..
-            exit 1
+            fi
+        else
+            # No sudo available - use environment variables
+            echo -e "${YELLOW}⚠️  Sudo not available. Using environment variables${NC}"
+            export DB_PASSWORD DB_USER DB_NAME DB_HOST DB_PORT
+            SERVER_PORT=${PORT:-8001}
+            $PYTHON_CMD manage.py runserver 0.0.0.0:$SERVER_PORT &
+            BACKEND_PID=$!
         fi
-    fi
     else
-        # No sudo available - use environment variables
-        echo -e "${YELLOW}⚠️  Sudo not available. Using environment variables${NC}"
+        # Using password authentication, run as current user
+        echo -e "${GREEN}✅ Using password authentication${NC}"
+        
+        # Export environment variables for Django
         export DB_PASSWORD DB_USER DB_NAME DB_HOST DB_PORT
+        
+        # Use PORT environment variable if set (Render, Heroku, etc.), otherwise default to 8001
         SERVER_PORT=${PORT:-8001}
         $PYTHON_CMD manage.py runserver 0.0.0.0:$SERVER_PORT &
         BACKEND_PID=$!
     fi
-else
-    # Using password authentication, run as current user
-    echo -e "${GREEN}✅ Using password authentication${NC}"
-    
-    # Export environment variables for Django
-    export DB_PASSWORD DB_USER DB_NAME DB_HOST DB_PORT
-    
-    # Use PORT environment variable if set (Render, Heroku, etc.), otherwise default to 8000
-    SERVER_PORT=${PORT:-8001}
-    $PYTHON_CMD manage.py runserver 0.0.0.0:$SERVER_PORT &
-    BACKEND_PID=$!
 fi
 
 cd ..
@@ -266,7 +282,7 @@ else
 fi
 
 echo ""
-echo -e "${GREEN}🎉 ENNA ATC is now running!${NC}"
+echo -e "${GREEN}🎉 Guardian Vision is now running!${NC}"
 echo "=================================================="
 if [ -z "${SKIP_FRONTEND:-}" ] && [ "${NODE_ENV}" != "production" ]; then
 echo -e "${BLUE}📱 Frontend:${NC}     http://localhost:8080"
@@ -285,7 +301,7 @@ echo ""
 # Function to handle cleanup on exit
 cleanup() {
     echo ""
-    echo -e "${YELLOW}🛑 Stopping ENNA ATC services...${NC}"
+    echo -e "${YELLOW}🛑 Stopping Guardian Vision services...${NC}"
     kill $FRONTEND_PID 2>/dev/null || true
     kill $BACKEND_PID 2>/dev/null || true
     kill $DB_VIEWER_PID 2>/dev/null || true

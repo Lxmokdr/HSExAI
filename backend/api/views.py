@@ -30,7 +30,7 @@ from .serializers import (
 @permission_classes([AllowAny])
 def health_check(request):
     """Health check endpoint"""
-    return Response({'status': 'OK', 'message': 'ENNA Backend is running'})
+    return Response({'status': 'OK', 'message': 'Guardian Backend is running'})
 
 
 @api_view(['POST'])
@@ -271,6 +271,55 @@ def change_password(request):
     user.save()
     
     return Response({'message': 'Mot de passe modifié avec succès'})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def train_risk_model(request):
+    """
+    Train the AI risk prediction model
+    
+    This endpoint triggers training of the Random Forest model on historical incident data.
+    Only accessible to superadmin users.
+    
+    Returns training metrics and feature importance.
+    """
+    # Check if user is superadmin
+    if request.user.role != 'superadmin':
+        return Response(
+            {'error': 'Accès non autorisé. Superadmin requis.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    from .services.ml_model import train_risk_model as train_model
+    
+    logger = __import__('logging').getLogger(__name__)
+    logger.info(f"Starting model training - triggered by {request.user.username}")
+    
+    try:
+        result = train_model()
+        
+        if 'error' in result:
+            return Response(result, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response({
+            'status': 'success',
+            'message': '✅ Model trained successfully',
+            'metrics': {
+                'train_accuracy': result.get('train_accuracy', 0),
+                'test_accuracy': result.get('test_accuracy', 0),
+                'n_samples': result.get('n_samples', 0),
+                'n_high_risk': result.get('n_high_risk', 0),
+            },
+            'feature_importance': result.get('feature_importance', {}),
+        })
+    
+    except Exception as e:
+        logger.error(f"Model training error: {e}")
+        return Response(
+            {'error': f'Training failed: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 class IncidentViewSet(viewsets.ModelViewSet):
@@ -1203,6 +1252,128 @@ class EquipmentViewSet(viewsets.ModelViewSet):
             'incidents': hardware_data,
             'count': len(hardware_data)
         })
+    
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def risk(self, request, pk=None):
+        """
+        Get AI-based risk prediction for equipment
+        
+        Returns:
+        {
+            'equipment_id': int,
+            'risk_score': float (0-1),
+            'risk_level': 'LOW' | 'MEDIUM' | 'HIGH',
+            'confidence': float,
+        }
+        """
+        try:
+            equipment = Equipement.objects.get(pk=pk)
+        except Equipement.DoesNotExist:
+            return Response(
+                {'error': 'Equipment not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Import here to avoid circular imports
+        from .services.ml_model import predict_equipment_risk
+        
+        # Get prediction from ML model
+        prediction = predict_equipment_risk(pk)
+        
+        # Store/update in database if successful
+        if 'error' not in prediction:
+            from .models import RiskPrediction
+            
+            # Extract features for storage
+            features = self._extract_risk_factors(equipment)
+            
+            risk_pred, _ = RiskPrediction.objects.update_or_create(
+                equipement=equipment,
+                defaults={
+                    'risk_score': prediction['risk_score'],
+                    'risk_level': prediction['risk_level'],
+                    'confidence': prediction['confidence'],
+                    **features,
+                }
+            )
+        
+        return Response(prediction)
+    
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def top_risks(self, request):
+        """
+        Get top N highest-risk equipment
+        
+        Query params:
+        - n: number of top risks to return (default: 5)
+        
+        Returns:
+        [
+            {
+                'equipment_id': int,
+                'equipment_name': str,
+                'risk_score': float,
+                'risk_level': str,
+            },
+            ...
+        ]
+        """
+        from .services.ml_model import predict_top_risks
+        
+        n = int(request.query_params.get('n', 5))
+        n = min(n, 20)  # Cap at 20
+        
+        predictions = predict_top_risks(n)
+        
+        # Add equipment details
+        result = []
+        for pred in predictions:
+            try:
+                equipment = Equipement.objects.get(id=pred['equipment_id'])
+                result.append({
+                    **pred,
+                    'equipment_name': equipment.nom_equipement,
+                    'equipment_serial': equipment.num_serie,
+                })
+            except Equipement.DoesNotExist:
+                result.append(pred)
+        
+        return Response({
+            'count': len(result),
+            'results': result,
+        })
+    
+    def _extract_risk_factors(self, equipment):
+        """Extract risk factors for storage in database"""
+        from datetime import timedelta
+        
+        now = timezone.now()
+        thirty_days_ago = now - timedelta(days=30)
+        
+        hw_incidents = HardwareIncident.objects.filter(
+            Q(equipement_id=equipment.id) | 
+            Q(numero_de_serie=equipment.num_serie)
+        )
+        
+        incident_count_30d = hw_incidents.filter(
+            date__gte=thirty_days_ago.date()
+        ).count()
+        
+        avg_downtime = hw_incidents.aggregate(
+            avg=Avg('duree_arret')
+        )['avg'] or 0
+        avg_downtime_hours = max(0, (avg_downtime / 60)) if avg_downtime else 0
+        
+        latest = hw_incidents.order_by('-date').first()
+        time_since_last = (now.date() - latest.date).days if latest else 365
+        
+        return {
+            'incident_count_30d': incident_count_30d,
+            'avg_downtime_hours': avg_downtime_hours,
+            'time_since_last_incident_days': max(0, time_since_last),
+            'hardware_incident_ratio': 0.7,  # Placeholder
+        }
+
 
 
 class UserViewSet(viewsets.ModelViewSet):

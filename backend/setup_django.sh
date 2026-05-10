@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Django Backend Setup Script
-# This script sets up the Django backend for ENNA
+# This script sets up the Django backend for Guardian
 
-echo "🔧 Setting up Django Backend for ENNA"
+echo "🔧 Setting up Django Backend for Guardian"
 echo "======================================"
 
 # Colors
@@ -115,7 +115,7 @@ echo -e "${BLUE}🗄️  Running database migrations...${NC}"
 # In containerized environments, these should be set via environment variables
 export DB_USER=${DB_USER:-postgres}
 export DB_PASSWORD=${DB_PASSWORD:-}
-export DB_NAME=${DB_NAME:-enna_db}
+export DB_NAME=${DB_NAME:-guardian_db}
 export DB_HOST=${DB_HOST:-localhost}
 export DB_PORT=${DB_PORT:-5432}
 

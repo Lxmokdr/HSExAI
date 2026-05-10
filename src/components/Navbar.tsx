@@ -20,8 +20,8 @@ export function Navbar() {
     <header className="fixed left-64 right-0 top-0 z-30 h-16 border-b border-border bg-card">
       <div className="flex h-full items-center justify-between px-6">
         <div className="flex items-center gap-4">
-          <h1 className="text-xl font-semibold text-foreground">
-            Système de Gestion des Incidents
+          <h1 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">
+            Safety Intelligence Suite
           </h1>
         </div>
 
@@ -29,7 +29,7 @@ export function Navbar() {
           <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2">
             <User className="h-5 w-5 text-muted-foreground" />
             <span className="text-sm font-medium">
-              {user ? user.username : "Agent ENNA"}
+              {user ? user.username : "Agent"}
             </span>
           </div>
 

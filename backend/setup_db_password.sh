@@ -14,7 +14,7 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # Set password for postgres user
-PASSWORD="enna_db_pass"
+PASSWORD="guardian_db_pass"
 echo "Setting password for postgres user..."
 sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD '$PASSWORD';"
 

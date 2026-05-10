@@ -5,12 +5,12 @@
 ### 1.1 Page de connexion
 
 **Structure générale :**
-- Layout plein écran avec image de fond (ennabg.jpg) et overlay sombre
+- Layout plein écran avec image de fond (guardianbg.jpg) et overlay sombre
 - Centrage vertical et horizontal de la carte de connexion
 - Carte flottante avec effet de flou (backdrop-blur) et transparence
 
 **Composants principaux :**
-- **Header visuel :** Logo ENNA (enna.png) dans un conteneur blanc arrondi (24x24), titre "ENNA ATC" en gras, sous-titre "Système de Gestion des Incidents"
+- **Header visuel :** Logo Guardian (guardian.png) dans un conteneur blanc arrondi (24x24), titre "Guardian Vision" en gras, sous-titre "Système de Gestion des Incidents"
 - **Formulaire de connexion :**
   - Champ "Nom d'utilisateur" avec placeholder
   - Champ "Mot de passe" (masqué) avec placeholder
@@ -56,7 +56,7 @@
 
 **Composants de navigation :**
 - **Sidebar fixe (gauche, 256px) :**
-  - Logo ENNA avec texte "ENNA ATC"
+  - Logo Guardian avec texte "Guardian Vision"
   - Menu de navigation vertical :
     * Tableau de bord (icône Home)
     * Incidents Hardware (icône Cpu)
@@ -373,5 +373,5 @@
 
 ## Conclusion
 
-L'interface utilisateur de ENNA ATC a été conçue en suivant les principes de simplicité, clarté et responsivité. Chaque page offre une expérience utilisateur optimale avec une navigation intuitive, des formulaires clairs, et un feedback visuel immédiat. Le design moderne et professionnel s'adapte parfaitement aux différentes tailles d'écran tout en maintenant une cohérence visuelle globale.
+L'interface utilisateur de Guardian Vision a été conçue en suivant les principes de simplicité, clarté et responsivité. Chaque page offre une expérience utilisateur optimale avec une navigation intuitive, des formulaires clairs, et un feedback visuel immédiat. Le design moderne et professionnel s'adapte parfaitement aux différentes tailles d'écran tout en maintenant une cohérence visuelle globale.
 

@@ -17,7 +17,7 @@ A management command to populate the database with sample data for testing the d
 Run this command to populate the database with test data:
 
 ```bash
-cd /home/lxmix/data/ENNA/backend
+cd /home/lxmix/data/Guardian/backend
 
 # Create test data
 sudo -E -u postgres env \

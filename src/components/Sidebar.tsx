@@ -2,7 +2,7 @@
 import { NavLink } from "react-router-dom";
 
 // Third-party imports
-import { Home, Cpu, HardDrive, FileText, History, Server, ClipboardList } from "lucide-react";
+import { Home, Cpu, HardDrive, FileText, History, Server, ClipboardList, ShieldAlert, Camera, MapPin, Activity, BrainCircuit } from "lucide-react";
 
 // Local hook imports
 import { useAuth } from "@/hooks/useAuth";
@@ -20,59 +20,57 @@ export function Sidebar() {
   // Build navigation items based on role
   const navigationItems = [];
 
-  // Dashboard - only for chef_departement and superadmin
+  // Safety Intelligence Platform (Phase 3 - Primary)
   if (permissions.canAccessDashboards) {
-    navigationItems.push({ name: "Tableau de bord", href: "/", icon: Home });
+    navigationItems.push({ name: "Executive Dashboard", href: "/ai/dashboard", icon: Home });
+    navigationItems.push({ name: "AI Alert Center", href: "/ai/alerts", icon: ShieldAlert });
+    navigationItems.push({ name: "Neural Inspection", href: "/ai/upload", icon: Camera });
+    navigationItems.push({ name: "Zone Visualization", href: "/ai/zones", icon: MapPin });
+    navigationItems.push({ name: "Compliance Trends", href: "/ai/analytics", icon: BrainCircuit });
+    
+    // Classic Operations & Predictive Analysis
+    navigationItems.push({ name: "Operations Analytics", href: "/", icon: Activity });
+    navigationItems.push({ name: "Equipment & Assets", href: "/equipment", icon: Server });
   }
 
-  // For chef_departement: only show history tabs, no incidents tabs
-  if (isChefDepartement) {
-    // Chef de département sees separate history tabs
+  // Hardware/Software Incident Management
+  if (!isChefDepartement) {
     if (permissions.canAccessHardwareIncidents) {
-      navigationItems.push({ name: "Historique Hardware", href: "/history/hardware", icon: Cpu });
+      navigationItems.push({ name: "Hardware Incidents", href: "/hardware", icon: Cpu });
+    }
+    if (permissions.canAccessSoftwareIncidents || permissions.canModifySoftwareIncidents) {
+      navigationItems.push({ name: "Software Incidents", href: "/software", icon: HardDrive });
+    }
+  }
+
+  // History & Reports
+  if (isChefDepartement) {
+    if (permissions.canAccessHardwareIncidents) {
+      navigationItems.push({ name: "History Hardware", href: "/history/hardware", icon: History });
     }
     if (permissions.canAccessSoftwareIncidents) {
-      navigationItems.push({ name: "Historique Software", href: "/history/software", icon: HardDrive });
+      navigationItems.push({ name: "History Software", href: "/history/software", icon: History });
     }
   } else {
-    // For other roles: show incidents tabs and single history
-    if (permissions.canAccessHardwareIncidents) {
-      navigationItems.push({ name: "Incidents Hardware", href: "/hardware", icon: Cpu });
-    }
-    // Show Software Incidents if user can access OR modify (for service_maintenance)
-    if (permissions.canAccessSoftwareIncidents || permissions.canModifySoftwareIncidents) {
-      navigationItems.push({ name: "Incidents Software", href: "/software", icon: HardDrive });
-    }
-    if (permissions.canAccessEquipment) {
-      navigationItems.push({ name: "Équipements", href: "/equipment", icon: Server });
-    }
-    // Single history tab for other roles (only if they have access)
     if (permissions.canAccessHardwareIncidents || permissions.canAccessSoftwareIncidents) {
-      navigationItems.push({ name: "Historique", href: "/history", icon: History });
+      navigationItems.push({ name: "Unified History", href: "/history", icon: History });
     }
   }
 
-  // Reports - for users who can access reports
   if (permissions.canAccessReports) {
-    navigationItems.push({ name: "Rapports", href: "/reports", icon: ClipboardList });
+    navigationItems.push({ name: "Technical Reports", href: "/reports", icon: ClipboardList });
   }
 
-  // User management - only for superadmin
   if (isSuperadmin) {
-    navigationItems.push({ name: "Gestion Utilisateurs", href: "/users", icon: FileText });
+    navigationItems.push({ name: "System Control", href: "/users", icon: FileText });
   }
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar border-r border-sidebar-border">
       <div className="flex h-full flex-col">
         {/* Logo */}
-        <div className="flex h-25 items-center justify-center border-b border-sidebar-border bg-sidebar-accent">
-          <div className="flex items-center gap-2 p-2">
-            <div className="h-16 w-16 rounded-lg flex items-center justify-center bg-white">
-              <img src="/enna.png" alt="ENNA Logo" className="h-16 w-16 object-contain" />
-            </div>
-            <span className="text-sidebar-foreground font-bold text-xl">ENNA ATC</span>
-          </div>
+        <div className="flex h-20 items-center px-6 border-b border-sidebar-border">
+          <span className="text-sidebar-foreground font-black text-xl tracking-tighter">Guardian Vision</span>
         </div>
 
         {/* Navigation */}
@@ -100,7 +98,7 @@ export function Sidebar() {
         {/* Footer */}
         <div className="border-t border-sidebar-border p-4">
           <p className="text-xs text-sidebar-foreground/60 text-center">
-            Système de Gestion des Incidents
+            Industrial Safety Intelligence Platform
           </p>
         </div>
       </div>

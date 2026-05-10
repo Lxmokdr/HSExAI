@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# ENNA ATC - Setup Script
-# This script sets up the ENNA incident management system for first-time users
+# Guardian Vision - Setup Script
+# This script sets up the Guardian incident management system for first-time users
 
-echo "🔧 ENNA ATC - Initial Setup"
+echo "🔧 Guardian Vision - Initial Setup"
 echo "============================"
 
 # Colors for output
@@ -117,7 +117,7 @@ kill $BACKEND_PID 2>/dev/null || true
 echo ""
 
 # Success message
-echo -e "${GREEN}🎉 ENNA ATC setup completed successfully!${NC}"
+echo -e "${GREEN}🎉 Guardian Vision setup completed successfully!${NC}"
 echo "=================================================="
 echo ""
 echo -e "${BLUE}📋 Next steps:${NC}"
